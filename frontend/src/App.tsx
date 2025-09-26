@@ -1,35 +1,49 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+// frontend/src/App.tsx
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import HomePage from './pages/HomePage';
+import GameRoom from './pages/GameRoom';
+import AdminDashboard from './pages/AdminDashboard';
+import Preloader from './components/Preloader';
+import { Toaster } from './components/ui/toaster';
+import { useThemeStore } from './hooks/useTheme';
+import './App.css'; 
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    useThemeStore.getState().setTheme(
+      (localStorage.getItem('theme') as 'light' | 'dark') || 'dark'
+    );
+  }, []);
+
+  if (loading) {
+    return <Preloader onFinished={() => setLoading(false)} visibleDuration={3000} />
+  }
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      {loading && <Preloader onFinished={() => setLoading(false)} />}
+
+      <div
+        className={`transition-opacity duration-500 ${
+          loading ? 'opacity-0' : 'opacity-100'
+        }`}
+      >
+        <Router>
+          <main>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/room/:roomId" element={<GameRoom />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+            </Routes>
+          </main>
+          <Toaster />
+        </Router>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
-  )
+  );
 }
 
-export default App
+export default App;

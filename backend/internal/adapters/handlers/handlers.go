@@ -15,7 +15,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/juan10024/tictactoe-test/backend/internal/core/services"
+	"github.com/juan10024/tictactoe-test/internal/core/services"
 )
 
 // GameHandler is responsible for game-related HTTP requests (if any were needed).

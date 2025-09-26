@@ -15,10 +15,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/juan10024/tictactoe-test/backend/internal/adapters/db"
-	"github.com/juan10024/tictactoe-test/backend/internal/adapters/handlers"
-	"github.com/juan10024/tictactoe-test/backend/internal/core/services"
-	"github.com/juan10024/tictactoe-test/backend/internal/infra/repository"
+	"github.com/juan10024/tictactoe-test/internal/adapters/db"
+	"github.com/juan10024/tictactoe-test/internal/adapters/handlers"
+	"github.com/juan10024/tictactoe-test/internal/core/services"
+	"github.com/juan10024/tictactoe-test/internal/infra/repository"
 )
 
 func main() {

@@ -14,8 +14,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/juan10024/tictactoe-test/backend/internal/core/domain"
-
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -32,7 +30,7 @@ func InitializeDatabase() (*gorm.DB, error) {
 	)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent), // Use logger.Info for verbose query logging
+		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
@@ -43,16 +41,11 @@ func InitializeDatabase() (*gorm.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
 	}
-	sqlDB.SetMaxIdleConns(10)           // Max number of connections in the idle connection pool
-	sqlDB.SetMaxOpenConns(100)          // Max number of open connections to the database
-	sqlDB.SetConnMaxLifetime(time.Hour) // Max amount of time a connection may be reused
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	// AutoMigrate the schema. In a real-world production environment, a more robust
-	// migration tool like GORM's migrator or an external tool (e.g., migrate, goose) is recommended.
-	if err := db.AutoMigrate(&domain.Player{}, &domain.Game{}, &domain.GameMove{}); err != nil {
-		return nil, fmt.Errorf("database schema migration failed: %w", err)
-	}
-	log.Println("INFO: Database schema migration completed successfully.")
+	log.Println("INFO: Database connection established successfully.")
 
 	return db, nil
 }

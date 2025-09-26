@@ -13,7 +13,7 @@ package repository
 import (
 	"errors"
 
-	"github.com/juan10024/tictactoe-test/backend/internal/core/domain"
+	"github.com/juan10024/tictactoe-test/internal/core/domain"
 
 	"gorm.io/gorm"
 )

@@ -9,7 +9,7 @@
  */
 package ports
 
-import "github.com/juan10024/tictactoe-test/backend/internal/core/domain"
+import "github.com/juan10024/tictactoe-test/internal/core/domain"
 
 // GameRepository defines the contract for game data persistence.
 // Any data storage solution must implement this interface to be used by the core service.

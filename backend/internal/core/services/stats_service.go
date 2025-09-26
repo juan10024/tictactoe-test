@@ -9,8 +9,8 @@
 package services
 
 import (
-	"github.com/juan10024/tictactoe-test/backend/internal/core/domain"
-	"github.com/juan10024/tictactoe-test/backend/internal/core/ports"
+	"github.com/juan10024/tictactoe-test/internal/core/domain"
+	"github.com/juan10024/tictactoe-test/internal/core/ports"
 )
 
 // StatsService provides statistics-related business logic.
