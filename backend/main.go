@@ -14,24 +14,22 @@ import (
 	"log"
 	"net/http"
 	"time"
-	"tictactoe/internal/adapters/db"
-	"tictactoe/internal/adapters/handlers"
-	"tictactoe/internal/core/services"
-	"tictactoe/internal/infra/repository"
+
+	"github.com/juan10024/tictactoe-test/backend/internal/adapters/db"
+	"github.com/juan10024/tictactoe-test/backend/internal/adapters/handlers"
+	"github.com/juan10024/tictactoe-test/backend/internal/core/services"
+	"github.com/juan10024/tictactoe-test/backend/internal/infra/repository"
 )
 
 func main() {
 	// 1. Database Initialization
-	// Initialize the GORM DB context with connection pooling for performance.
 	dbConn, err := db.InitializeDatabase()
 	if err != nil {
 		log.Fatalf("FATAL: Database initialization failed: %v", err)
 	}
 	log.Println("SUCCESS: Database connection pool established.")
 
-	// 2. Dependency Injection (DI) Container
-	// Instantiate repositories, services, and the WebSocket hub. This manual DI approach
-	// is lightweight and sufficient for this application's scale.
+	// 2. Dependency Injection (repositories, services, hub)
 	gameRepo := repository.NewGormGameRepository(dbConn)
 	statsRepo := repository.NewGormStatsRepository(dbConn)
 
@@ -42,18 +40,26 @@ func main() {
 	statsService := services.NewStatsService(statsRepo)
 
 	// 3. Handler & Router Configuration
-	// Create handlers with injected services and set up the HTTP router.
+	// We create handlers so they are available for wiring routes.
+	// NOTE: ensure handlers expose methods for each route; if you don't use
+	// a handler immediately, you must either register routes or discard the variable.
 	gameHandler := handlers.NewGameHandler(gameService, hub)
+	_ = gameHandler // avoid "declared and not used" compile error
+	// TODO: register game routes below when handler methods are implemented:
+	// e.g. router.HandleFunc("/api/games", gameHandler.ListGames)
+
 	statsHandler := handlers.NewStatsHandler(statsService)
 	wsHandler := handlers.NewWebSocketHandler(hub, gameService) // Inject GameService for join logic
 
+	// 4. Router registration
 	router := http.NewServeMux()
+	// WebSocket endpoint (handlers should parse room/player from query or URL)
 	router.HandleFunc("/ws/join/", wsHandler.HandleConnection)
+	// Stats API
 	router.HandleFunc("/api/stats/ranking", statsHandler.GetRanking)
 	router.HandleFunc("/api/stats/general", statsHandler.GetGeneralStats)
 
-	// 4. HTTP Server Configuration & Launch
-	// Configure a robust http.Server with timeouts to prevent resource exhaustion.
+	// 5. HTTP Server Configuration & Launch
 	server := &http.Server{
 		Addr:         ":8080",
 		Handler:      router,
