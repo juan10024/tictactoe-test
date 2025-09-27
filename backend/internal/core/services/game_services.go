@@ -1,11 +1,4 @@
 // backend/internal/core/services/game_service.go
-/*
- * Game Service (Application Core)
- *
- * This service encapsulates the primary business logic for managing the Tic-Tac-Toe game lifecycle.
- * It handles operations like creating/joining games, processing player moves, and determining game outcomes.
- * It remains pure and framework-agnostic, interacting with the outside world only through the defined ports.
- */
 package services
 
 import (
@@ -57,6 +50,8 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 	if game.PlayerOID == nil && *game.PlayerXID != player.ID {
 		game.PlayerOID = &player.ID
 		game.Status = "in_progress"
+		// When second player joins, X always starts
+		game.CurrentTurn = "X"
 		if err := s.repo.Update(game); err != nil {
 			return nil, nil, err
 		}
@@ -64,6 +59,7 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 		game.PlayerXID = &player.ID
 		if game.PlayerOID != nil {
 			game.Status = "in_progress"
+			game.CurrentTurn = "X"
 		}
 		if err := s.repo.Update(game); err != nil {
 			return nil, nil, err
@@ -84,22 +80,34 @@ func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*dom
 	if game.Status != "in_progress" {
 		return nil, errors.New("game is not currently in progress")
 	}
-	if position < 0 || position > 8 || game.Board[position] != ' ' {
-		return nil, errors.New("invalid move: position is out of bounds or already taken")
+
+	if position < 0 || position > 8 {
+		return nil, errors.New("invalid move: position is out of bounds")
 	}
 
-	var symbol string
-	if playerID == *game.PlayerXID && game.CurrentTurn == "X" {
-		symbol = "X"
-	} else if playerID == *game.PlayerOID && game.CurrentTurn == "O" {
-		symbol = "O"
+	if game.Board[position] != ' ' {
+		return nil, errors.New("invalid move: position is already taken")
+	}
+
+	// Determine which player should be making the move
+	var expectedPlayerID *uint
+	var expectedSymbol string
+
+	if game.CurrentTurn == "X" {
+		expectedPlayerID = game.PlayerXID
+		expectedSymbol = "X"
 	} else {
+		expectedPlayerID = game.PlayerOID
+		expectedSymbol = "O"
+	}
+
+	if expectedPlayerID == nil || playerID != *expectedPlayerID {
 		return nil, errors.New("it is not your turn")
 	}
 
 	// --- State Transition ---
 	boardRunes := []rune(game.Board)
-	boardRunes[position] = rune(symbol[0])
+	boardRunes[position] = rune(expectedSymbol[0])
 	game.Board = string(boardRunes)
 
 	// --- Check Game Outcome ---

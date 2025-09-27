@@ -1,13 +1,4 @@
 // frontend/src/store/gameStore.ts
-/*
- * Zustand Store for Game State Management (Corrected)
- *
- * Correcciones principales:
- * - El backend envía mensajes con un campo `type`. Ahora el `onmessage` hace un switch
- *   para manejar `gameStateUpdate`.
- * - Se parsea el `gameState` desde `message.gameState`, y `players` desde `message.players`.
- * - Se eliminó la validación incorrecta con `GameStateSchema` en la raíz del mensaje.
- */
 import { create } from 'zustand';
 import { z } from 'zod';
 import { WS_URL } from '../../config';
@@ -43,6 +34,8 @@ interface GameStoreState {
   gameState: GameState | null;
   players: { X: Player | null; O: Player | null };
   error: string | null;
+  winningLine: number[] | null; // Nueva propiedad para la línea ganadora
+  isGameOver: boolean; // Nueva propiedad para estado de juego terminado
 }
 
 // Acciones del store
@@ -50,6 +43,7 @@ interface GameStoreActions {
   connect: (roomId: string, playerName: string) => void;
   disconnect: () => void;
   makeMove: (position: number) => void;
+  resetGame: () => void;
   resetError: () => void;
 }
 
@@ -62,16 +56,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameState: null,
   players: { X: null, O: null },
   error: null,
+  winningLine: null,
+  isGameOver: false,
 
   // Conexión WebSocket
   connect: (roomId: string, playerName: string) => {
     if (get().socket) return;
 
-    const ws = new WebSocket(
-      `${WS_URL}/join/${roomId}?playerName=${encodeURIComponent(playerName)}`
-    );
+    const wsUrl = `${WS_URL}/join/${roomId}?playerName=${encodeURIComponent(playerName)}`;
+    const ws = new WebSocket(wsUrl);
 
-    ws.onopen = () => set({ isConnected: true, socket: ws, error: null });
+    ws.onopen = () => set({ isConnected: true, socket: ws, error: null, winningLine: null, isGameOver: false });
 
     ws.onmessage = (event) => {
       try {
@@ -88,10 +83,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
               ? { ...message.players.O, symbol: 'O' } as Player
               : null;
 
+            // Calcular la línea ganadora si hay un ganador
+            let winningLine = null;
+            if (parsedState.Status === 'finished' && parsedState.WinnerID) {
+              winningLine = calculateWinningLine(parsedState.Board);
+            }
+
             set({
               gameState: parsedState,
               players: { X: playerX, O: playerO },
+              winningLine,
+              isGameOver: parsedState.Status === 'finished'
             });
+            break;
+          }
+          
+          case 'error': {
+            set({ error: message.message || 'An error occurred' });
             break;
           }
 
@@ -111,6 +119,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         socket: null,
         gameState: null,
         players: { X: null, O: null },
+        winningLine: null,
+        isGameOver: false,
       });
   },
 
@@ -118,7 +128,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   makeMove: (position: number) => {
     const { socket, gameState } = get();
     if (socket && socket.readyState === WebSocket.OPEN && gameState?.Status === 'in_progress') {
-      socket.send(JSON.stringify({ type: 'move', position }));
+      // Enviar en el formato que espera el backend
+      socket.send(JSON.stringify({ type: 'move', payload: { position } }));
+    }
+  },
+
+  // Acción: reiniciar juego
+  resetGame: () => {
+    const { socket, gameState } = get();
+    if (socket && socket.readyState === WebSocket.OPEN && gameState) {
+      // Enviar mensaje para reiniciar el juego
+      socket.send(JSON.stringify({ type: 'reset' }));
     }
   },
 
@@ -130,9 +150,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
       socket: null,
       gameState: null,
       players: { X: null, O: null },
+      winningLine: null,
+      isGameOver: false,
     });
   },
 
   // Acción: resetear errores
   resetError: () => set({ error: null }),
 }));
+
+// Función para calcular la línea ganadora
+function calculateWinningLine(board: string): number[] | null {
+  const winConditions = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+    [0, 4, 8], [2, 4, 6]             // Diagonals
+  ];
+
+  for (const condition of winConditions) {
+    const [a, b, c] = condition;
+    if (board[a] !== ' ' && board[a] === board[b] && board[a] === board[c]) {
+      return condition;
+    }
+  }
+  return null;
+}

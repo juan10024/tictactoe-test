@@ -42,9 +42,9 @@ const HomePage = () => {
   
   // Placeholder for the company logo
   const CompanyLogo = () => (
-    <svg height="60" width="60" className="text-cyan-400 dark:text-cyan-300" viewBox="0 0 100 100">
+    <svg height="60" width="60" className="text-cyan-500 dark:text-cyan-300" viewBox="0 0 100 100">
       <path fill="currentColor" d="M50 0 L100 25 L100 75 L50 100 L0 75 L0 25 Z M50 15 L85 32.5 L85 67.5 L50 85 L15 67.5 L15 32.5 Z" />
-      <text x="50" y="62" fontSize="30" fill="currentColor" textAnchor="middle" fontWeight="bold">T³</text>
+      <text x="55" y="62" fontSize="30" fill="currentColor" color='white' textAnchor="middle" fontWeight="bold">T³</text>
     </svg>
   );
 

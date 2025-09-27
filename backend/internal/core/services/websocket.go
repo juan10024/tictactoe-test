@@ -1,12 +1,4 @@
 // backend/internal/core/services/websocket.go
-/*
- * WebSocket Real-Time Communication Hub
- *
- * This file implements the core real-time communication logic. The Hub manages
- * WebSocket clients and game rooms, broadcasting messages efficiently. It's designed
- * for high concurrency using goroutines and channels, with a mutex for safe access
- * to shared state (the rooms map).
- */
 package services
 
 import (
@@ -155,13 +147,54 @@ func (c *Client) readPump(gs *GameService) {
 			} `json:"payload"`
 		}
 
-		if err := json.Unmarshal(message, &msg); err == nil && msg.Type == "move" {
-			_, err := gs.MakeMove(c.room, c.playerID, msg.Payload.Position)
-			if err != nil {
-				log.Printf("ERROR: Invalid move by player %d in room %s: %v", c.playerID, c.room, err)
-				// Optionally send an error message back to the client
-			} else {
-				broadcastGameState(c.hub, gs, c.room)
+		// Handle both old and new message formats for compatibility
+		if err := json.Unmarshal(message, &msg); err == nil {
+			switch msg.Type {
+			case "move":
+				_, err := gs.MakeMove(c.room, c.playerID, msg.Payload.Position)
+				if err != nil {
+					log.Printf("ERROR: Invalid move by player %d in room %s: %v", c.playerID, c.room, err)
+					// Send error message back to the client
+					errorMsg := map[string]interface{}{
+						"type":    "error",
+						"message": err.Error(),
+					}
+					errorBytes, _ := json.Marshal(errorMsg)
+					select {
+					case c.send <- errorBytes:
+					default:
+						log.Printf("WARN: Could not send error message to client in room %s", c.room)
+					}
+				} else {
+					broadcastGameState(c.hub, gs, c.room)
+				}
+			case "reset":
+				// Reset game logic - this would require a new service method
+				game, err := gs.repo.GetByRoomID(c.room)
+				if err == nil && game != nil {
+					// Reset the game state
+					game.Board = "         "
+					game.Status = "in_progress"
+					game.CurrentTurn = "X" // X always starts
+					game.WinnerID = nil
+
+					if err := gs.repo.Update(game); err != nil {
+						log.Printf("ERROR: Could not reset game in room %s: %v", c.room, err)
+					} else {
+						broadcastGameState(c.hub, gs, c.room)
+					}
+				}
+			}
+		} else {
+			// Try parsing as the old format (direct position)
+			var position int
+			if err := json.Unmarshal(message, &position); err == nil {
+				_, err := gs.MakeMove(c.room, c.playerID, position)
+				if err != nil {
+					log.Printf("ERROR: Invalid move by player %d in room %s: %v", c.playerID, c.room, err)
+				} else {
+					broadcastGameState(c.hub, gs, c.room)
+				}
 			}
 		}
 	}

@@ -39,10 +39,12 @@ const GameRoom = () => {
     }
   };
 
+  const playerName = localStorage.getItem('playerName') || '';
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-4">
-      <div className="w-full max-w-4xl">
-        <div className="flex justify-between items-center mb-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-100 to-gray-300 dark:from-gray-900 dark:to-gray-800 text-gray-800 dark:text-gray-200 p-4">
+      <div className="w-full max-w-6xl">
+        <div className="flex justify-between items-center mb-6">
           <button
             onClick={() => navigate('/')}
             className="flex items-center gap-2 px-4 py-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -77,8 +79,8 @@ const GameRoom = () => {
           </div>
         )}
 
-        <div className="flex flex-col md:flex-row items-center md:items-start justify-center gap-8">
-          <Board />
+        <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-8">
+          <Board playerName={playerName} />
           <GameInfo />
         </div>
       </div>
