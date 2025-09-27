@@ -1,3 +1,4 @@
+// backend/internal/core/services/game_service.go
 package services
 
 import (
@@ -63,19 +64,13 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 			if finalGame.PlayerO != (domain.Player{}) && strings.EqualFold(finalGame.PlayerO.Name, playerName) {
 				return nil, nil, errors.New("a player with this name already exists in the room")
 			}
-			// Si puede unirse, lo dejamos como observador si el juego ya está en progreso
-			isObserver := finalGame.Status == "in_progress" && finalGame.PlayerOID != nil && *finalGame.PlayerOID != player.ID
+			// Si puede unirse, lo dejamos como observador si el juego ya está en progreso o si está lleno
+			isObserver := (finalGame.Status == "in_progress" && finalGame.PlayerOID != nil && *finalGame.PlayerOID != player.ID) ||
+				(finalGame.PlayerXID != nil && *finalGame.PlayerXID != player.ID && finalGame.PlayerOID != nil && *finalGame.PlayerOID != player.ID)
 			if isObserver {
 				return finalGame, player, nil // Retorna el juego existente como observador
 			}
-			// Si no es observador, pero el juego ya tiene 2 jugadores, también es observador
-			if finalGame.PlayerOID != nil && *finalGame.PlayerOID != player.ID {
-				return finalGame, player, nil // Retorna como observador
-			}
-			// Si llegamos aquí, el juego fue creado por otro proceso, pero aún hay espacio
-			// Este caso es raro, pero lo dejamos como observador o manejamos según la lógica de negocio
-			// Para simplificar, asumimos que si no puede unirse como jugador, es observador
-			return finalGame, player, nil
+			return finalGame, player, nil // Retorna como jugador si hay espacio
 		}
 		// Si la creación fue exitosa, retornamos el nuevo juego
 		return newGame, player, nil
@@ -88,12 +83,13 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 		return nil, nil, errors.New("a player with this name already exists in the room")
 	}
 	if existingGame.PlayerO != (domain.Player{}) && strings.ToLower(existingGame.PlayerO.Name) == normalizedPlayerName {
-		return nil, nil, errors.New("a player with this name already exists in the room")
+		return nil, nil, errors.New("a player with this name already already exists in the room")
 	}
 
 	// Game exists, check if we can join as a player or if we become an observer
-	if existingGame.Status == "in_progress" {
-		// Game is already in progress, player becomes an observer
+	// Si el juego ya está en progreso o ya tiene 2 jugadores, se convierte en observador
+	isObserver := existingGame.Status == "in_progress" || (existingGame.PlayerXID != nil && existingGame.PlayerOID != nil)
+	if isObserver {
 		return existingGame, player, nil
 	}
 
@@ -101,9 +97,9 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 	if existingGame.PlayerOID == nil && *existingGame.PlayerXID != player.ID {
 		existingGame.PlayerOID = &player.ID
 		existingGame.PlayerO = *player
-		existingGame.Status = "in_progress"
-		// When second player joins, X always starts
-		existingGame.CurrentTurn = "X"
+		// El estado permanece como "waiting" hasta que el primer jugador confirme
+		// existingGame.Status = "in_progress" // <-- Esto se hará después de la confirmación
+		// existingGame.CurrentTurn = "X" // <-- Esto se hará después de la confirmación
 		if err := s.repo.Update(existingGame); err != nil {
 			return nil, nil, err
 		}
@@ -112,8 +108,8 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 		existingGame.PlayerXID = &player.ID
 		existingGame.PlayerX = *player
 		if existingGame.PlayerOID != nil {
-			existingGame.Status = "in_progress"
-			existingGame.CurrentTurn = "X"
+			// existingGame.Status = "in_progress" // <-- Esto se hará después de la confirmación
+			// existingGame.CurrentTurn = "X" // <-- Esto se hará después de la confirmación
 		}
 		if err := s.repo.Update(existingGame); err != nil {
 			return nil, nil, err
@@ -174,7 +170,7 @@ func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*dom
 		} else {
 			game.WinnerID = game.PlayerOID
 		}
-		// Update player statistics for the winner
+		// Update player statistics for the winner and loser
 		if game.WinnerID != nil {
 			winner, err := s.repo.GetPlayerByID(*game.WinnerID)
 			if err == nil && winner != nil {
@@ -182,6 +178,22 @@ func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*dom
 				if err := s.repo.UpdatePlayer(winner); err != nil {
 					// Log the error but don't fail the game move
 					// The game move itself was successful, just the stats update failed
+				}
+			}
+			// Update loser stats
+			var loserID *uint
+			if winner != nil && game.WinnerID != nil && *game.WinnerID == winner.ID {
+				if game.WinnerID == game.PlayerXID {
+					loserID = game.PlayerOID // X won, O lost
+				} else {
+					loserID = game.PlayerXID // O won, X lost
+				}
+			}
+			if loserID != nil {
+				loser, err := s.repo.GetPlayerByID(*loserID)
+				if err == nil && loser != nil {
+					loser.Losses++
+					s.repo.UpdatePlayer(loser)
 				}
 			}
 		}
