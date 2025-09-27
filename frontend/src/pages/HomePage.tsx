@@ -25,9 +25,17 @@ const HomePage = () => {
       alert('Please enter a player name.');
       return;
     }
+    
+    // Validación de longitud del nombre
+    if (playerName.length > 15) {
+      alert('Player name must be 15 characters or less.');
+      return;
+    }
+
     localStorage.setItem('playerName', playerName);
     const newRoomId = uuidv4().substring(0, 8); // Create a short, unique room ID
-    navigate(`/room/${newRoomId}`);
+    // CORRECCIÓN: Incluir playerName en la URL como query parameter
+    navigate(`/room/${newRoomId}?playerName=${encodeURIComponent(playerName)}`);
   };
 
   const handleJoinRoom = (e: React.FormEvent) => {
@@ -36,8 +44,16 @@ const HomePage = () => {
       alert('Please enter a player name and a room ID.');
       return;
     }
+    
+    // Validación de longitud del nombre
+    if (playerName.length > 15) {
+      alert('Player name must be 15 characters or less.');
+      return;
+    }
+
     localStorage.setItem('playerName', playerName);
-    navigate(`/room/${roomId}`);
+    // CORRECCIÓN: Incluir playerName en la URL como query parameter
+    navigate(`/room/${roomId}?playerName=${encodeURIComponent(playerName)}`);
   };
   
   // Placeholder for the company logo
@@ -70,8 +86,9 @@ const HomePage = () => {
             type="text"
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
-            placeholder="Enter your name"
+            placeholder="Enter your name (max 15 chars)"
             className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            maxLength={15} // Añadir maxLength también en el input para UI inmediata
           />
         </div>
 

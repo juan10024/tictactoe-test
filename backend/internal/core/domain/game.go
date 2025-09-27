@@ -17,9 +17,12 @@ import (
 
 // Player represents a user in the system.
 type Player struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Name      string    `gorm:"size:50;uniqueIndex;not null" json:"name"`
-	Wins      int       `gorm:"default:0" json:"wins"`
+	ID     uint   `gorm:"primaryKey" json:"id"`
+	Name   string `gorm:"size:50;uniqueIndex;not null" json:"name"`
+	Wins   int    `gorm:"default:0" json:"wins"`
+	Draws  int    `json:"draws" gorm:"default:0"`
+	Losses int    `json:"losses" gorm:"default:0"`
+
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
 }

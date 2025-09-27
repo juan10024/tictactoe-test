@@ -21,7 +21,7 @@ const GameInfo = () => {
   const [modalMessage, setModalMessage] = useState('');
   const [playerStats, setPlayerStats] = useState<{ X: PlayerStats | null; O: PlayerStats | null }>({ X: null, O: null });
 
-  // Calcular estadísticas de los jugadores
+  // Calcular estadísticas de los jugadores basadas en el estado actual
   useEffect(() => {
     if (players.X || players.O) {
       const newXStats: PlayerStats = {
@@ -73,7 +73,7 @@ const GameInfo = () => {
 
   if (!gameState) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 min-w-[300px]">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 min-w-[320px]">
         <div className="text-center text-gray-500 dark:text-gray-400">
           Connecting to game...
         </div>
@@ -106,14 +106,14 @@ const GameInfo = () => {
               <div className="flex items-center gap-2">
                 <Trophy className="text-yellow-500" size={16} />
                 <span className="font-bold text-cyan-700 dark:text-cyan-300">
-                  {playerStats.X?.wins || 0}
+                  {players.X?.wins || 0}
                 </span>
               </div>
             </div>
             <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
               <div className="text-center bg-cyan-100 dark:bg-cyan-800/50 p-1 rounded">
                 <div className="font-semibold">W</div>
-                <div>{playerStats.X?.wins || 0}</div>
+                <div>{players.X?.wins || 0}</div>
               </div>
               <div className="text-center bg-red-100 dark:bg-red-800/50 p-1 rounded">
                 <div className="font-semibold">L</div>
@@ -138,14 +138,14 @@ const GameInfo = () => {
               <div className="flex items-center gap-2">
                 <Trophy className="text-yellow-500" size={16} />
                 <span className="font-bold text-rose-700 dark:text-rose-300">
-                  {playerStats.O?.wins || 0}
+                  {players.O?.wins || 0}
                 </span>
               </div>
             </div>
             <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
               <div className="text-center bg-cyan-100 dark:bg-cyan-800/50 p-1 rounded">
                 <div className="font-semibold">W</div>
-                <div>{playerStats.O?.wins || 0}</div>
+                <div>{players.O?.wins || 0}</div>
               </div>
               <div className="text-center bg-red-100 dark:bg-red-800/50 p-1 rounded">
                 <div className="font-semibold">L</div>

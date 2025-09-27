@@ -3,6 +3,7 @@ import { useGameStore } from '../store/gameStore';
 
 interface BoardProps {
   playerName: string;
+  isObserver?: boolean;
 }
 
 // Componente para la línea ganadora con animación
@@ -17,7 +18,7 @@ const WinningLine = ({ positions, boardSize = 3 }: { positions: number[]; boardS
   const getCoordinates = (position: number) => {
     const row = Math.floor(position / boardSize);
     const col = position % boardSize;
-    // Ajustar para que esté en el centro de la celda
+    // Ajustar para que esté en el centro de la celda - CORREGIDO
     return {
       x: (col + 0.5) * cellSize,
       y: (row + 0.5) * cellSize
@@ -69,11 +70,13 @@ const Cell = ({
   onClick,
   disabled,
   isWinningCell,
+  isCurrentTurn,
 }: {
   value: string;
   onClick: () => void;
   disabled: boolean;
   isWinningCell: boolean;
+  isCurrentTurn: boolean;
 }) => {
   const symbolClass = isWinningCell
     ? value === 'X'
@@ -98,6 +101,7 @@ const Cell = ({
         disabled:opacity-60 disabled:cursor-not-allowed
         ${value !== ' ' ? 'shadow-inner' : 'shadow-lg hover:shadow-xl'}
         ${isWinningCell ? 'animate-pulse bg-gradient-to-br from-yellow-400/20 to-orange-500/20' : ''}
+        ${isCurrentTurn ? 'ring-4 ring-cyan-400 dark:ring-cyan-500 ring-opacity-80' : ''}
       `}
       disabled={disabled}
       aria-label={`Casilla ${value === ' ' ? 'vacía' : value}`}
@@ -113,7 +117,7 @@ const Cell = ({
 };
 
 // Main Board component
-const Board = ({ playerName }: BoardProps) => {
+const Board = ({ playerName, isObserver = false }: BoardProps) => {
   const gameState = useGameStore((state) => state.gameState);
   const makeMove = useGameStore((state) => state.makeMove);
   const players = useGameStore((state) => state.players);
@@ -124,7 +128,7 @@ const Board = ({ playerName }: BoardProps) => {
 
   // O(1) Lookup: Identificar mi símbolo en base al nombre
   let mySymbol: 'X' | 'O' | null = null;
-  if (playerName) { 
+  if (!isObserver && playerName) { 
       if (players.X?.name === playerName) mySymbol = 'X';
       else if (players.O?.name === playerName) mySymbol = 'O';
   }
@@ -137,10 +141,9 @@ const Board = ({ playerName }: BoardProps) => {
       <div className="grid grid-cols-3 gap-3 p-4 bg-gray-300 dark:bg-gray-950 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-4 border-cyan-500/50">
         {boardState.split('').map((cell, index) => {
           // Validación de turno
-          const isMyTurn = isGameActive && mySymbol === gameState?.CurrentTurn;
-          // La celda está deshabilitada si no está vacía O no es mi turno.
-          const disabled = cell !== ' ' || !isMyTurn;
-          const isWinningCell = winningLine ? winningLine.includes(index) : false;
+          const isMyTurn = isGameActive && !isObserver && mySymbol === gameState?.CurrentTurn;
+          // La celda está deshabilitada si no está vacía O no es mi turno O soy observador
+          const disabled = cell !== ' ' || !isMyTurn || isObserver;
 
           return (
             <Cell
@@ -148,14 +151,21 @@ const Board = ({ playerName }: BoardProps) => {
               value={cell}
               onClick={() => makeMove(index)}
               disabled={disabled}
-              isWinningCell={isWinningCell}
+              isWinningCell={winningLine ? winningLine.includes(index) : false}
+              isCurrentTurn={isGameActive && !isObserver && gameState.CurrentTurn === mySymbol}
             />
           );
         })}
         {winningLine && <WinningLine positions={winningLine} />}
       </div>
       
-      <style >{`
+      {isObserver && (
+        <div className="mt-4 text-center text-yellow-600 font-semibold">
+          You are observing this game
+        </div>
+      )}
+      
+      <style>{`
         @keyframes drawLine {
           0% {
             width: 0;

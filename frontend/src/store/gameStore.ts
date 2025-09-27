@@ -8,6 +8,8 @@ const PlayerSchema = z.object({
   id: z.number(),
   name: z.string(),
   wins: z.number(),
+  draws: z.number(),
+  losses: z.number(),
 });
 
 // Zod schema para validar el estado del juego recibido
@@ -36,6 +38,9 @@ interface GameStoreState {
   error: string | null;
   winningLine: number[] | null; // Nueva propiedad para la línea ganadora
   isGameOver: boolean; // Nueva propiedad para estado de juego terminado
+  isObserver: boolean; // Nueva propiedad para indicar si es observador
+  showConfirmationModal: boolean; // Nueva propiedad para mostrar modal de confirmación
+  confirmationOpponent: string | null; // Nombre del oponente que quiere iniciar
 }
 
 // Acciones del store
@@ -45,6 +50,9 @@ interface GameStoreActions {
   makeMove: (position: number) => void;
   resetGame: () => void;
   resetError: () => void;
+  confirmGameStart: (confirm: boolean) => void; // Nueva acción para confirmar inicio de juego
+  // Nueva acción para mostrar un mensaje de error bonito
+  showCustomError: (message: string) => void;
 }
 
 type GameStore = GameStoreState & GameStoreActions;
@@ -58,6 +66,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   error: null,
   winningLine: null,
   isGameOver: false,
+  isObserver: false,
+  showConfirmationModal: false,
+  confirmationOpponent: null,
+
+  // Nueva acción para mostrar un error personalizado (podría abrir un modal o toast)
+  showCustomError: (message: string) => {
+    // Aquí puedes usar una librería de UI como react-hot-toast, react-toastify, etc.
+    // o simplemente actualizar el estado para mostrar un modal
+    alert(message); // Usamos alert como placeholder temporal
+    // set({ error: message });
+  },
 
   // Conexión WebSocket
   connect: (roomId: string, playerName: string) => {
@@ -66,7 +85,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const wsUrl = `${WS_URL}/join/${roomId}?playerName=${encodeURIComponent(playerName)}`;
     const ws = new WebSocket(wsUrl);
 
-    ws.onopen = () => set({ isConnected: true, socket: ws, error: null, winningLine: null, isGameOver: false });
+    ws.onopen = () => set({ isConnected: true, socket: ws, error: null, winningLine: null, isGameOver: false, showConfirmationModal: false });
 
     ws.onmessage = (event) => {
       try {
@@ -93,13 +112,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
               gameState: parsedState,
               players: { X: playerX, O: playerO },
               winningLine,
-              isGameOver: parsedState.Status === 'finished'
+              isGameOver: parsedState.Status === 'finished',
+              isObserver: message.isObserver || false
             });
             break;
           }
-          
+
+          case 'gameStartConfirmation': {
+            set({
+              showConfirmationModal: true,
+              confirmationOpponent: message.opponentName
+            });
+            break;
+          }
+
           case 'error': {
-            set({ error: message.message || 'An error occurred' });
+            // Verificamos si el error es de nombre duplicado
+            if (message.message && message.message.includes('already exists in the room')) {
+              // Mostramos un mensaje bonito y desconectamos
+              get().showCustomError(message.message);
+              get().disconnect(); // Cerramos la conexión si es un error crítico de nombre
+            } else {
+              set({ error: message.message || 'An error occurred' });
+            }
             break;
           }
 
@@ -112,7 +147,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     };
 
-    ws.onerror = () => set({ error: 'Connection error.' });
+    ws.onerror = () => {
+      set({ error: 'WebSocket connection error.' });
+      // Opcional: intentar reconectar después de un tiempo
+    };
     ws.onclose = () =>
       set({
         isConnected: false,
@@ -121,21 +159,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
         players: { X: null, O: null },
         winningLine: null,
         isGameOver: false,
+        isObserver: false,
+        showConfirmationModal: false,
+        confirmationOpponent: null,
       });
   },
 
   // Acción: enviar movimiento
   makeMove: (position: number) => {
-    const { socket, gameState } = get();
+    const { socket, gameState, isObserver } = get();
+    if (isObserver) {
+      console.log('Observers cannot make moves');
+      return;
+    }
+
     if (socket && socket.readyState === WebSocket.OPEN && gameState?.Status === 'in_progress') {
       // Enviar en el formato que espera el backend
       socket.send(JSON.stringify({ type: 'move', payload: { position } }));
     }
   },
 
+  // Acción: confirmar inicio de juego
+  confirmGameStart: (confirm: boolean) => {
+    const { socket, showConfirmationModal } = get();
+    if (showConfirmationModal && socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'confirmGameStart',
+        payload: { confirmed: confirm }
+      }));
+
+      set({ showConfirmationModal: false, confirmationOpponent: null });
+    }
+  },
+
   // Acción: reiniciar juego
   resetGame: () => {
-    const { socket, gameState } = get();
+    const { socket, gameState, isObserver } = get();
+    if (isObserver) return; // Observers cannot reset the game
+
     if (socket && socket.readyState === WebSocket.OPEN && gameState) {
       // Enviar mensaje para reiniciar el juego
       socket.send(JSON.stringify({ type: 'reset' }));
@@ -144,7 +205,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // Acción: desconectar
   disconnect: () => {
-    get().socket?.close();
+    const socket = get().socket;
+    if (socket) {
+        // Cerrar la conexión WebSocket
+        socket.close(1000, "User disconnected"); // Código 1000 significa cierre normal
+    }
     set({
       isConnected: false,
       socket: null,
@@ -152,6 +217,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       players: { X: null, O: null },
       winningLine: null,
       isGameOver: false,
+      isObserver: false,
+      showConfirmationModal: false,
+      confirmationOpponent: null,
     });
   },
 

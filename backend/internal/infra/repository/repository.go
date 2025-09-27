@@ -23,6 +23,10 @@ type GormGameRepository struct {
 	db *gorm.DB
 }
 
+func (r *GormGameRepository) UpdatePlayer(player *domain.Player) error {
+	return r.db.Save(player).Error
+}
+
 func NewGormGameRepository(db *gorm.DB) *GormGameRepository {
 	return &GormGameRepository{db: db}
 }

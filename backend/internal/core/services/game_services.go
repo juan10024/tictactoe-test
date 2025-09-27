@@ -1,4 +1,3 @@
-// backend/internal/core/services/game_service.go
 package services
 
 import (
@@ -26,47 +25,104 @@ func (gs *GameService) GetPlayerByID(id uint) (*domain.Player, error) {
 // HandleJoinRoom manages a player joining a game room. If the room doesn't exist, it's created.
 // If it exists and needs a player, the player joins.
 func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *domain.Player, error) {
+	// Validate player name
+	if len(playerName) == 0 || len(playerName) > 15 {
+		return nil, nil, errors.New("player name must be between 1 and 15 characters")
+	}
+
 	player, err := s.repo.GetOrCreatePlayerByName(playerName)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	game, err := s.repo.GetByRoomID(roomID)
-	if err != nil { // Game not found, create a new one.
+	// Intenta obtener el juego existente
+	existingGame, err := s.repo.GetByRoomID(roomID)
+
+	if err != nil { // El juego no existe
+		// Intenta crear un nuevo juego, pero maneja el caso de que otro proceso lo haya creado mientras
 		newGame := &domain.Game{
 			RoomID:      roomID,
 			PlayerXID:   &player.ID,
+			PlayerX:     *player,
 			Status:      "waiting",
 			Board:       "         ",
 			CurrentTurn: "X",
 		}
-		if err := s.repo.Create(newGame); err != nil {
-			return nil, nil, err
+		// Usamos Create que fallará si el RoomID ya existe
+		if createErr := s.repo.Create(newGame); createErr != nil {
+			// Si falla por clave duplicada, significa que otro proceso lo creó
+			// Intentamos obtener el juego recién creado por el otro proceso
+			finalGame, finalErr := s.repo.GetByRoomID(roomID)
+			if finalErr != nil {
+				return nil, nil, errors.New("failed to create or retrieve game after creation attempt: " + finalErr.Error())
+			}
+			// Verificamos si el jugador actual puede unirse
+			if finalGame.PlayerX != (domain.Player{}) && strings.EqualFold(finalGame.PlayerX.Name, playerName) {
+				return nil, nil, errors.New("a player with this name already exists in the room")
+			}
+			if finalGame.PlayerO != (domain.Player{}) && strings.EqualFold(finalGame.PlayerO.Name, playerName) {
+				return nil, nil, errors.New("a player with this name already exists in the room")
+			}
+			// Si puede unirse, lo dejamos como observador si el juego ya está en progreso
+			isObserver := finalGame.Status == "in_progress" && finalGame.PlayerOID != nil && *finalGame.PlayerOID != player.ID
+			if isObserver {
+				return finalGame, player, nil // Retorna el juego existente como observador
+			}
+			// Si no es observador, pero el juego ya tiene 2 jugadores, también es observador
+			if finalGame.PlayerOID != nil && *finalGame.PlayerOID != player.ID {
+				return finalGame, player, nil // Retorna como observador
+			}
+			// Si llegamos aquí, el juego fue creado por otro proceso, pero aún hay espacio
+			// Este caso es raro, pero lo dejamos como observador o manejamos según la lógica de negocio
+			// Para simplificar, asumimos que si no puede unirse como jugador, es observador
+			return finalGame, player, nil
 		}
+		// Si la creación fue exitosa, retornamos el nuevo juego
 		return newGame, player, nil
 	}
 
-	// Game exists, attempt to join as the second player.
-	if game.PlayerOID == nil && *game.PlayerXID != player.ID {
-		game.PlayerOID = &player.ID
-		game.Status = "in_progress"
-		// When second player joins, X always starts
-		game.CurrentTurn = "X"
-		if err := s.repo.Update(game); err != nil {
-			return nil, nil, err
-		}
-	} else if game.PlayerXID == nil { // Should not happen with current logic, but defensive.
-		game.PlayerXID = &player.ID
-		if game.PlayerOID != nil {
-			game.Status = "in_progress"
-			game.CurrentTurn = "X"
-		}
-		if err := s.repo.Update(game); err != nil {
-			return nil, nil, err
-		}
+	// El juego ya existía, verificamos nombres duplicados
+	// Normalize player name for comparison (case-insensitive)
+	normalizedPlayerName := strings.ToLower(strings.TrimSpace(playerName))
+	if existingGame.PlayerX != (domain.Player{}) && strings.ToLower(existingGame.PlayerX.Name) == normalizedPlayerName {
+		return nil, nil, errors.New("a player with this name already exists in the room")
+	}
+	if existingGame.PlayerO != (domain.Player{}) && strings.ToLower(existingGame.PlayerO.Name) == normalizedPlayerName {
+		return nil, nil, errors.New("a player with this name already exists in the room")
 	}
 
-	return game, player, nil
+	// Game exists, check if we can join as a player or if we become an observer
+	if existingGame.Status == "in_progress" {
+		// Game is already in progress, player becomes an observer
+		return existingGame, player, nil
+	}
+
+	// Game exists, attempt to join as the second player.
+	if existingGame.PlayerOID == nil && *existingGame.PlayerXID != player.ID {
+		existingGame.PlayerOID = &player.ID
+		existingGame.PlayerO = *player
+		existingGame.Status = "in_progress"
+		// When second player joins, X always starts
+		existingGame.CurrentTurn = "X"
+		if err := s.repo.Update(existingGame); err != nil {
+			return nil, nil, err
+		}
+		return existingGame, player, nil
+	} else if existingGame.PlayerXID == nil { // Should not happen with current logic, but defensive.
+		existingGame.PlayerXID = &player.ID
+		existingGame.PlayerX = *player
+		if existingGame.PlayerOID != nil {
+			existingGame.Status = "in_progress"
+			existingGame.CurrentTurn = "X"
+		}
+		if err := s.repo.Update(existingGame); err != nil {
+			return nil, nil, err
+		}
+		return existingGame, player, nil
+	} else {
+		// Room is full, player becomes an observer
+		return existingGame, player, nil
+	}
 }
 
 // MakeMove processes a player's move, validates it, updates the game state, and checks for a winner.
@@ -118,8 +174,34 @@ func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*dom
 		} else {
 			game.WinnerID = game.PlayerOID
 		}
+		// Update player statistics for the winner
+		if game.WinnerID != nil {
+			winner, err := s.repo.GetPlayerByID(*game.WinnerID)
+			if err == nil && winner != nil {
+				winner.Wins++
+				if err := s.repo.UpdatePlayer(winner); err != nil {
+					// Log the error but don't fail the game move
+					// The game move itself was successful, just the stats update failed
+				}
+			}
+		}
 	} else if !strings.Contains(game.Board, " ") { // Draw
 		game.Status = "finished"
+		// Update player statistics for a draw
+		if game.PlayerXID != nil {
+			playerX, err := s.repo.GetPlayerByID(*game.PlayerXID)
+			if err == nil && playerX != nil {
+				playerX.Draws++
+				s.repo.UpdatePlayer(playerX)
+			}
+		}
+		if game.PlayerOID != nil {
+			playerO, err := s.repo.GetPlayerByID(*game.PlayerOID)
+			if err == nil && playerO != nil {
+				playerO.Draws++
+				s.repo.UpdatePlayer(playerO)
+			}
+		}
 	} else { // Continue play
 		game.CurrentTurn = map[string]string{"X": "O", "O": "X"}[game.CurrentTurn]
 	}

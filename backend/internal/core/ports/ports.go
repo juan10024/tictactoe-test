@@ -19,6 +19,7 @@ type GameRepository interface {
 	GetByRoomID(roomID string) (*domain.Game, error)
 	GetOrCreatePlayerByName(name string) (*domain.Player, error)
 	GetPlayerByID(id uint) (*domain.Player, error)
+	UpdatePlayer(player *domain.Player) error
 }
 
 // StatsRepository defines the contract for retrieving game statistics.

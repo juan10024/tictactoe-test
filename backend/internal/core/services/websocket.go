@@ -28,11 +28,13 @@ var upgrader = websocket.Upgrader{
 
 // Client represents a connected WebSocket user.
 type Client struct {
-	hub      *Hub
-	conn     *websocket.Conn
-	send     chan []byte // Buffered channel for outbound messages.
-	room     string
-	playerID uint
+	hub        *Hub
+	conn       *websocket.Conn
+	send       chan []byte // Buffered channel for outbound messages.
+	room       string
+	playerID   uint
+	playerName string // Store player name for reference
+	isObserver bool   // Flag to indicate if the client is an observer
 }
 
 // Hub maintains the set of active clients and broadcasts messages to the clients.
@@ -105,19 +107,58 @@ func ServeWs(hub *Hub, gameService *GameService, w http.ResponseWriter, r *http.
 		return
 	}
 
-	// We don't need the returned `game` here; use blank identifier to avoid unused var.
-	_, player, err := gameService.HandleJoinRoom(roomID, playerName)
+	// Get or create the game and player
+	game, player, err := gameService.HandleJoinRoom(roomID, playerName)
 	if err != nil {
 		log.Printf("ERROR: Could not handle join room: %v", err)
 		conn.Close()
 		return
 	}
 
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256), room: roomID, playerID: player.ID}
+	// Determine if the client is an observer
+	isObserver := false
+	if game.Status == "in_progress" &&
+		game.PlayerXID != nil && *game.PlayerXID != player.ID &&
+		game.PlayerOID != nil && *game.PlayerOID != player.ID {
+		isObserver = true
+	} else if game.PlayerXID != nil && *game.PlayerXID != player.ID &&
+		game.PlayerOID != nil && *game.PlayerOID != player.ID {
+		isObserver = true
+	}
+
+	client := &Client{
+		hub:        hub,
+		conn:       conn,
+		send:       make(chan []byte, 256),
+		room:       roomID,
+		playerID:   player.ID,
+		playerName: player.Name,
+		isObserver: isObserver,
+	}
 	hub.register <- client
 
-	// Broadcast updated game state to the room (broadcastGameState will fetch current state)
+	// Broadcast updated game state to the room
 	broadcastGameState(hub, gameService, roomID)
+
+	// If this is the second player joining, send a start confirmation to the first player
+	if game.Status == "in_progress" && game.PlayerXID != nil && *game.PlayerXID != player.ID {
+		// Find the first player and send them a confirmation request
+		hub.mu.RLock()
+		roomClients := hub.rooms[roomID] // Accedemos al hub pasado como parámetro
+		for otherClient := range roomClients {
+			if otherClient.playerID == *game.PlayerXID && !otherClient.isObserver {
+				confirmationMsg := map[string]interface{}{
+					"type":         "gameStartConfirmation",
+					"message":      playerName + " wants to start the game",
+					"opponentName": playerName,
+				}
+				confirmationBytes, _ := json.Marshal(confirmationMsg)
+				otherClient.send <- confirmationBytes
+				break
+			}
+		}
+		hub.mu.RUnlock()
+	}
 
 	go client.writePump()
 	go client.readPump(gameService)
@@ -151,6 +192,17 @@ func (c *Client) readPump(gs *GameService) {
 		if err := json.Unmarshal(message, &msg); err == nil {
 			switch msg.Type {
 			case "move":
+				if c.isObserver {
+					// Observers cannot make moves
+					errorMsg := map[string]interface{}{
+						"type":    "error",
+						"message": "Observers cannot make moves",
+					}
+					errorBytes, _ := json.Marshal(errorMsg)
+					c.send <- errorBytes
+					continue
+				}
+
 				_, err := gs.MakeMove(c.room, c.playerID, msg.Payload.Position)
 				if err != nil {
 					log.Printf("ERROR: Invalid move by player %d in room %s: %v", c.playerID, c.room, err)
@@ -169,6 +221,11 @@ func (c *Client) readPump(gs *GameService) {
 					broadcastGameState(c.hub, gs, c.room)
 				}
 			case "reset":
+				// Only players can reset the game, not observers
+				if c.isObserver {
+					continue
+				}
+
 				// Reset game logic - this would require a new service method
 				game, err := gs.repo.GetByRoomID(c.room)
 				if err == nil && game != nil {
@@ -184,11 +241,19 @@ func (c *Client) readPump(gs *GameService) {
 						broadcastGameState(c.hub, gs, c.room)
 					}
 				}
+			case "confirmGameStart":
+				// This would be handled by the player who receives the confirmation request
+				// For now, we'll just log it
+				log.Printf("Game start confirmed by %s", c.playerName)
 			}
 		} else {
 			// Try parsing as the old format (direct position)
 			var position int
 			if err := json.Unmarshal(message, &position); err == nil {
+				if c.isObserver {
+					continue
+				}
+
 				_, err := gs.MakeMove(c.room, c.playerID, position)
 				if err != nil {
 					log.Printf("ERROR: Invalid move by player %d in room %s: %v", c.playerID, c.room, err)
@@ -241,6 +306,7 @@ type GameStateBroadcast struct {
 		X *domain.Player `json:"X"`
 		O *domain.Player `json:"O"`
 	} `json:"players"`
+	IsObserver bool `json:"isObserver"`
 }
 
 func broadcastGameState(hub *Hub, gs *GameService, roomID string) {

@@ -1,12 +1,4 @@
 // backend/internal/adapters/handlers/handlers.go
-/*
- * HTTP Handlers (Controller Layer)
- *
- * This package defines the HTTP handlers that act as the entry point for API requests
- * and WebSocket connections. Handlers are responsible for parsing requests, invoking
- * the appropriate application services, and formatting responses. They keep business
- * logic out of the transport layer.
- */
 package handlers
 
 import (
