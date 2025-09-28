@@ -33,8 +33,7 @@ const HomePage = () => {
     }
 
     localStorage.setItem('playerName', playerName);
-    const newRoomId = uuidv4().substring(0, 8); // Create a short, unique room ID
-    // CORRECCIÓN: Incluir playerName en la URL como query parameter
+    const newRoomId = uuidv4().substring(0, 8); 
     navigate(`/room/${newRoomId}?playerName=${encodeURIComponent(playerName)}`);
   };
 

@@ -140,24 +140,29 @@ func ServeWs(hub *Hub, gameService *GameService, w http.ResponseWriter, r *http.
 	// Broadcast updated game state to the room
 	broadcastGameState(hub, gameService, roomID)
 
-	// If this is the second player joining, send a start confirmation to the first player
-	if game.Status == "in_progress" && game.PlayerXID != nil && *game.PlayerXID != player.ID {
-		// Find the first player and send them a confirmation request
-		hub.mu.RLock()
-		roomClients := hub.rooms[roomID] // Accedemos al hub pasado como parámetro
-		for otherClient := range roomClients {
-			if otherClient.playerID == *game.PlayerXID && !otherClient.isObserver {
-				confirmationMsg := map[string]interface{}{
-					"type":         "gameStartConfirmation",
-					"message":      playerName + " wants to start the game",
-					"opponentName": playerName,
+	// Check if we should start the game (only if we're not an observer and game is waiting)
+	if !isObserver && game.Status == "waiting" {
+		// Get the latest game state to avoid race conditions
+		latestGame, err := gameService.repo.GetByRoomID(roomID)
+		if err != nil {
+			log.Printf("ERROR: Could not get latest game state for room %s: %v", roomID, err)
+		} else {
+			// Double-check that we have two players and game is still waiting
+			if latestGame.Status == "waiting" &&
+				latestGame.PlayerXID != nil &&
+				latestGame.PlayerOID != nil {
+
+				// Update game to in_progress
+				latestGame.Status = "in_progress"
+				latestGame.CurrentTurn = "X"
+				if err := gameService.repo.Update(latestGame); err != nil {
+					log.Printf("ERROR: Could not start game in room %s: %v", roomID, err)
+				} else {
+					// Broadcast the updated game state
+					broadcastGameState(hub, gameService, roomID)
 				}
-				confirmationBytes, _ := json.Marshal(confirmationMsg)
-				otherClient.send <- confirmationBytes
-				break
 			}
 		}
-		hub.mu.RUnlock()
 	}
 
 	go client.writePump()
@@ -242,9 +247,56 @@ func (c *Client) readPump(gs *GameService) {
 					}
 				}
 			case "confirmGameStart":
-				// This would be handled by the player who receives the confirmation request
-				// For now, we'll just log it
 				log.Printf("Game start confirmed by %s", c.playerName)
+
+			case "playAgainRequest":
+				// Reenviar el mensaje de solicitud de jugar de nuevo a todos los demás jugadores en la sala
+				if !c.isObserver {
+					playAgainMsg := map[string]interface{}{
+						"type":             "playAgainRequest",
+						"requestingPlayer": c.playerName,
+					}
+					playAgainBytes, _ := json.Marshal(playAgainMsg)
+
+					// Enviar a todos los clientes en la sala excepto al que envió la solicitud
+					c.hub.mu.RLock()
+					if room, ok := c.hub.rooms[c.room]; ok {
+						for otherClient := range room {
+							if otherClient != c && !otherClient.isObserver {
+								select {
+								case otherClient.send <- playAgainBytes:
+								default:
+									log.Printf("WARN: Could not send playAgainRequest to client %s in room %s", otherClient.playerName, c.room)
+								}
+							}
+						}
+					}
+					c.hub.mu.RUnlock()
+				}
+			case "play_again_menu_request":
+
+				if !c.isObserver {
+					playAgainMenuMsg := map[string]interface{}{
+						"type":             "play_again_menu_request",
+						"requestingPlayer": c.playerName,
+					}
+					playAgainMenuBytes, _ := json.Marshal(playAgainMenuMsg)
+
+					// Enviar a todos los clientes en la sala excepto al que envió la solicitud
+					c.hub.mu.RLock()
+					if room, ok := c.hub.rooms[c.room]; ok {
+						for otherClient := range room {
+							if otherClient != c && !otherClient.isObserver {
+								select {
+								case otherClient.send <- playAgainMenuBytes:
+								default:
+									log.Printf("WARN: Could not send play_again_menu_request to client %s in room %s", otherClient.playerName, c.room)
+								}
+							}
+						}
+					}
+					c.hub.mu.RUnlock()
+				}
 			}
 		} else {
 			// Try parsing as the old format (direct position)

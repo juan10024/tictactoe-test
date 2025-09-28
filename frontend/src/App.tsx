@@ -3,11 +3,13 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import GameRoom from './pages/GameRoom';
+import PlayerStatsPage from './pages/PlayerStatsPage';
 import AdminDashboard from './pages/AdminDashboard';
 import Preloader from './components/Preloader';
 import { Toaster } from './components/ui/toaster';
 import { useThemeStore } from './hooks/useTheme';
 import './App.css'; 
+
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -37,6 +39,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/room/:roomId" element={<GameRoom />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/room/:roomId/stats" element={<PlayerStatsPage />} />
             </Routes>
           </main>
           <Toaster />

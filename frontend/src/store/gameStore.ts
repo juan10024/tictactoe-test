@@ -36,11 +36,16 @@ interface GameStoreState {
   gameState: GameState | null;
   players: { X: Player | null; O: Player | null };
   error: string | null;
-  winningLine: number[] | null; // Nueva propiedad para la línea ganadora
-  isGameOver: boolean; // Nueva propiedad para estado de juego terminado
-  isObserver: boolean; // Nueva propiedad para indicar si es observador
-  showConfirmationModal: boolean; // Nueva propiedad para mostrar modal de confirmación
-  confirmationOpponent: string | null; // Nombre del oponente que quiere iniciar
+  winningLine: number[] | null;
+  isGameOver: boolean;
+  isObserver: boolean;
+  showConfirmationModal: boolean;
+  confirmationOpponent: string | null;
+  showEndGameModal: boolean;
+  showPlayAgainConfirmation: boolean;
+  playAgainRequestingPlayer: string | null;
+  isReturningPlayer: boolean;
+  playerName?: string;
 }
 
 // Acciones del store
@@ -50,9 +55,14 @@ interface GameStoreActions {
   makeMove: (position: number) => void;
   resetGame: () => void;
   resetError: () => void;
-  confirmGameStart: (confirm: boolean) => void; // Nueva acción para confirmar inicio de juego
-  // Nueva acción para mostrar un mensaje de error bonito
+  confirmGameStart: (confirm: boolean) => void;
   showCustomError: (message: string) => void;
+  // Nuevas acciones para los modales
+  setShowEndGameModal: (show: boolean) => void;
+  setShowPlayAgainConfirmation: (show: boolean) => void;
+  setPlayAgainRequest: (playerName: string) => void;
+  clearPlayAgainRequest: () => void;
+  setIsReturningPlayer: (isReturning: boolean) => void;
 }
 
 type GameStore = GameStoreState & GameStoreActions;
@@ -69,13 +79,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isObserver: false,
   showConfirmationModal: false,
   confirmationOpponent: null,
+  showEndGameModal: false,
+  showPlayAgainConfirmation: false,
+  playAgainRequestingPlayer: null,
+  isReturningPlayer: false,
 
-  // Nueva acción para mostrar un error personalizado (podría abrir un modal o toast)
+  // Nueva acción para mostrar un error personalizado
   showCustomError: (message: string) => {
-    // Aquí puedes usar una librería de UI como react-hot-toast, react-toastify, etc.
-    // o simplemente actualizar el estado para mostrar un modal
-    alert(message); // Usamos alert como placeholder temporal
-    // set({ error: message });
+    alert(message);
   },
 
   // Conexión WebSocket
@@ -85,7 +96,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const wsUrl = `${WS_URL}/join/${roomId}?playerName=${encodeURIComponent(playerName)}`;
     const ws = new WebSocket(wsUrl);
 
-    ws.onopen = () => set({ isConnected: true, socket: ws, error: null, winningLine: null, isGameOver: false, showConfirmationModal: false });
+    ws.onopen = () => {
+      set({
+        isConnected: true,
+        socket: ws,
+        error: null,
+        winningLine: null,
+        isGameOver: false,
+        showConfirmationModal: false,
+        showEndGameModal: false,
+        showPlayAgainConfirmation: false,
+        playAgainRequestingPlayer: null
+      });
+    };
 
     ws.onmessage = (event) => {
       try {
@@ -102,6 +125,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
               ? { ...message.players.O, symbol: 'O' } as Player
               : null;
 
+            // Verificar si es jugador registrado (tiene stats)
+            const isReturning = !!(playerX?.wins || playerX?.losses || playerX?.draws ||
+              playerO?.wins || playerO?.losses || playerO?.draws);
+
             // Calcular la línea ganadora si hay un ganador
             let winningLine = null;
             if (parsedState.Status === 'finished' && parsedState.WinnerID) {
@@ -113,8 +140,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
               players: { X: playerX, O: playerO },
               winningLine,
               isGameOver: parsedState.Status === 'finished',
-              isObserver: message.isObserver || false
+              isObserver: message.isObserver || false,
+              isReturningPlayer: isReturning
             });
+
+            // Mostrar modal de fin de juego si el juego terminó
+            if (parsedState.Status === 'finished') {
+              setTimeout(() => set({ showEndGameModal: true }), 500);
+            }
             break;
           }
 
@@ -126,12 +159,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
             break;
           }
 
+          case 'playAgainRequest': {
+            const { playerName: currentPlayerName } = get();
+            if (message.requestingPlayer !== currentPlayerName) {
+              set({
+                showPlayAgainConfirmation: true,
+                playAgainRequestingPlayer: message.requestingPlayer
+              });
+            }
+            break;
+          }
+
+          case 'play_again_menu_request': {
+            const { playerName: currentPlayerName } = get();
+            if (message.requestingPlayer !== currentPlayerName) {
+              set({
+                showPlayAgainConfirmation: true,
+                playAgainRequestingPlayer: message.requestingPlayer
+              });
+            }
+            break;
+          }
+
           case 'error': {
-            // Verificamos si el error es de nombre duplicado
             if (message.message && message.message.includes('already exists in the room')) {
-              // Mostramos un mensaje bonito y desconectamos
               get().showCustomError(message.message);
-              get().disconnect(); // Cerramos la conexión si es un error crítico de nombre
+              get().disconnect();
             } else {
               set({ error: message.message || 'An error occurred' });
             }
@@ -149,8 +202,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     ws.onerror = () => {
       set({ error: 'WebSocket connection error.' });
-      // Opcional: intentar reconectar después de un tiempo
     };
+
     ws.onclose = () =>
       set({
         isConnected: false,
@@ -162,10 +215,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isObserver: false,
         showConfirmationModal: false,
         confirmationOpponent: null,
+        showEndGameModal: false,
+        showPlayAgainConfirmation: false,
+        playAgainRequestingPlayer: null,
       });
   },
 
-  // Acción: enviar movimiento
   makeMove: (position: number) => {
     const { socket, gameState, isObserver } = get();
     if (isObserver) {
@@ -174,12 +229,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     if (socket && socket.readyState === WebSocket.OPEN && gameState?.Status === 'in_progress') {
-      // Enviar en el formato que espera el backend
       socket.send(JSON.stringify({ type: 'move', payload: { position } }));
     }
   },
 
-  // Acción: confirmar inicio de juego
   confirmGameStart: (confirm: boolean) => {
     const { socket, showConfirmationModal } = get();
     if (showConfirmationModal && socket && socket.readyState === WebSocket.OPEN) {
@@ -192,23 +245,40 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
-  // Acción: reiniciar juego
   resetGame: () => {
     const { socket, gameState, isObserver } = get();
-    if (isObserver) return; // Observers cannot reset the game
+    if (isObserver) return;
+
+    // Actualizar estado local inmediatamente
+    if (gameState) {
+      const resetGameState = {
+        ...gameState,
+        Board: '         ',
+        Status: 'in_progress' as const,
+        CurrentTurn: 'X' as const,
+        WinnerID: null,
+        winningLine: null
+      };
+
+      set({
+        gameState: resetGameState,
+        winningLine: null,
+        isGameOver: false,
+        showEndGameModal: false,
+        showPlayAgainConfirmation: false,
+        playAgainRequestingPlayer: null
+      });
+    }
 
     if (socket && socket.readyState === WebSocket.OPEN && gameState) {
-      // Enviar mensaje para reiniciar el juego
       socket.send(JSON.stringify({ type: 'reset' }));
     }
   },
 
-  // Acción: desconectar
   disconnect: () => {
     const socket = get().socket;
     if (socket) {
-        // Cerrar la conexión WebSocket
-        socket.close(1000, "User disconnected"); // Código 1000 significa cierre normal
+      socket.close(1000, "User disconnected");
     }
     set({
       isConnected: false,
@@ -220,19 +290,49 @@ export const useGameStore = create<GameStore>((set, get) => ({
       isObserver: false,
       showConfirmationModal: false,
       confirmationOpponent: null,
+      showEndGameModal: false,
+      showPlayAgainConfirmation: false,
+      playAgainRequestingPlayer: null,
     });
   },
 
-  // Acción: resetear errores
   resetError: () => set({ error: null }),
+
+  // Nuevas acciones para modales
+  setShowEndGameModal: (show) => set({ showEndGameModal: show }),
+  setShowPlayAgainConfirmation: (show) => set({ showPlayAgainConfirmation: show }),
+
+setPlayAgainRequest: (playerName) => {
+  const { socket, setShowEndGameModal, gameState } = get();
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    // Determinar qué tipo de solicitud enviar
+    const isFromMenu = gameState?.Status === 'finished';
+    
+    const messageType = isFromMenu ? 'play_again_menu_request' : 'playAgainRequest';
+    
+    // Cerrar el modal de fin de juego para el jugador que solicita jugar de nuevo
+    setShowEndGameModal(false);
+    socket.send(JSON.stringify({
+      type: messageType,
+      payload: { requestingPlayer: playerName }
+    }));
+  }
+},
+
+  clearPlayAgainRequest: () => set({
+    showPlayAgainConfirmation: false,
+    playAgainRequestingPlayer: null
+  }),
+
+  setIsReturningPlayer: (isReturning) => set({ isReturningPlayer: isReturning }),
 }));
 
 // Función para calcular la línea ganadora
 function calculateWinningLine(board: string): number[] | null {
   const winConditions = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-    [0, 4, 8], [2, 4, 6]             // Diagonals
+    [0, 1, 2], [3, 4, 5], [6, 7, 8],
+    [0, 3, 6], [1, 4, 7], [2, 5, 8],
+    [0, 4, 8], [2, 4, 6]
   ];
 
   for (const condition of winConditions) {
