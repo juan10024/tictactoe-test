@@ -1,4 +1,10 @@
-// backend/internal/core/services/game_service.go
+/*
+ * file: game_services.go
+ * package: services
+ * description:
+ *     Defines the Users game management and actions in the game
+ */
+
 package services
 
 import (
@@ -9,24 +15,56 @@ import (
 	"github.com/juan10024/tictactoe-test/internal/core/ports"
 )
 
-// GameService provides game-related business logic.
+/*
+ * GameService provides business logic for game management and player actions.
+ *
+ * Fields:
+ *   - repo (ports.GameRepository): Repository used to persist and retrieve game data.
+ */
 type GameService struct {
 	repo ports.GameRepository
 }
 
-// NewGameService creates a new instance of GameService.
+/*
+ * NewGameService creates a new instance of GameService.
+ *
+ * Parameters:
+ *   - r (ports.GameRepository): The repository implementation for game data.
+ *
+ * Returns:
+ *   - *GameService: A new service instance configured with the provided repository.
+ */
 func NewGameService(r ports.GameRepository) *GameService {
 	return &GameService{repo: r}
 }
 
+/*
+ * GetPlayerByID retrieves a player by its unique ID.
+ *
+ * Parameters:
+ *   - id (uint): The player's unique identifier.
+ *
+ * Returns:
+ *   - *domain.Player: The player instance if found.
+ *   - error: An error if the player cannot be retrieved.
+ */
 func (gs *GameService) GetPlayerByID(id uint) (*domain.Player, error) {
 	return gs.repo.GetPlayerByID(id)
 }
 
-// HandleJoinRoom manages a player joining a game room. If the room doesn't exist, it's created.
-// If it exists and needs a player, the player joins.
+/*
+ * HandleJoinRoom allows a player to join or create a game room.
+ *
+ * Parameters:
+ *   - roomID (string): The unique identifier of the room.
+ *   - playerName (string): The name of the player joining the room.
+ *
+ * Returns:
+ *   - *domain.Game: The game instance for the room.
+ *   - *domain.Player: The player instance that joined.
+ *   - error: An error if joining or creating the room fails.
+ */
 func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *domain.Player, error) {
-	// Validate player name
 	if len(playerName) == 0 || len(playerName) > 15 {
 		return nil, nil, errors.New("player name must be between 1 and 15 characters")
 	}
@@ -36,11 +74,8 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 		return nil, nil, err
 	}
 
-	// Intenta obtener el juego existente
 	existingGame, err := s.repo.GetByRoomID(roomID)
-
-	if err != nil { // El juego no existe
-		// Crear un nuevo juego
+	if err != nil {
 		newGame := &domain.Game{
 			RoomID:      roomID,
 			PlayerXID:   &player.ID,
@@ -50,29 +85,21 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 			CurrentTurn: "X",
 		}
 
-		// Usamos Create que fallará si el RoomID ya existe (clave duplicada)
 		if createErr := s.repo.Create(newGame); createErr != nil {
-			// Si falla por clave duplicada, significa que otro proceso lo creó
-			// Volver a intentar obtener el juego recién creado
 			finalGame, finalErr := s.repo.GetByRoomID(roomID)
 			if finalErr != nil {
 				return nil, nil, errors.New("failed to retrieve game after creation attempt: " + finalErr.Error())
 			}
 
-			// Verificar si el jugador actual puede unirse
 			if (finalGame.PlayerXID != nil && *finalGame.PlayerXID == player.ID) ||
 				(finalGame.PlayerOID != nil && *finalGame.PlayerOID == player.ID) {
-				// Jugador ya está en la sala
 				return finalGame, player, nil
 			}
 
-			// Verificar si hay espacio para unirse
 			if finalGame.PlayerXID != nil && finalGame.PlayerOID != nil {
-				// Sala llena, convertir en observador
 				return finalGame, player, nil
 			}
 
-			// Intentar unirse como segundo jugador
 			if finalGame.PlayerXID != nil && *finalGame.PlayerXID != player.ID && finalGame.PlayerOID == nil {
 				finalGame.PlayerOID = &player.ID
 				finalGame.PlayerO = *player
@@ -84,18 +111,14 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 
 			return finalGame, player, nil
 		}
-		// Si la creación fue exitosa, retornamos el nuevo juego
 		return newGame, player, nil
 	}
 
-	// El juego ya existía
-	// Verificar si el jugador ya está en la sala
 	if (existingGame.PlayerXID != nil && *existingGame.PlayerXID == player.ID) ||
 		(existingGame.PlayerOID != nil && *existingGame.PlayerOID == player.ID) {
 		return existingGame, player, nil
 	}
 
-	// Verificar si hay espacio para unirse
 	if existingGame.PlayerXID != nil && *existingGame.PlayerXID == player.ID {
 		return nil, nil, errors.New("you are already in this room")
 	}
@@ -104,9 +127,7 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 		return nil, nil, errors.New("you are already in this room")
 	}
 
-	// Verificar si hay espacio para unirse como jugador
 	if existingGame.Status == "waiting" && existingGame.PlayerOID == nil && existingGame.PlayerXID != nil {
-		// Unirse como segundo jugador
 		existingGame.PlayerOID = &player.ID
 		existingGame.PlayerO = *player
 		if err := s.repo.Update(existingGame); err != nil {
@@ -115,18 +136,28 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 		return existingGame, player, nil
 	}
 
-	// Convertir en observador
 	return existingGame, player, nil
 }
 
-// MakeMove processes a player's move, validates it, updates the game state, and checks for a winner.
+/*
+ * MakeMove validates and applies a player's move, updates the game state,
+ * and determines if the game has a winner or ends in a draw.
+ *
+ * Parameters:
+ *   - roomID (string): The unique identifier of the room.
+ *   - playerID (uint): The unique identifier of the player making the move.
+ *   - position (int): The board position (0-8) where the move is made.
+ *
+ * Returns:
+ *   - *domain.Game: The updated game instance.
+ *   - error: An error if the move is invalid or cannot be applied.
+ */
 func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*domain.Game, error) {
 	game, err := s.repo.GetByRoomID(roomID)
 	if err != nil {
 		return nil, errors.New("game not found")
 	}
 
-	// --- Input Validations ---
 	if game.Status != "in_progress" {
 		return nil, errors.New("game is not currently in progress")
 	}
@@ -139,7 +170,6 @@ func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*dom
 		return nil, errors.New("invalid move: position is already taken")
 	}
 
-	// Determine which player should be making the move
 	var expectedPlayerID *uint
 	var expectedSymbol string
 
@@ -155,12 +185,10 @@ func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*dom
 		return nil, errors.New("it is not your turn")
 	}
 
-	// --- State Transition ---
 	boardRunes := []rune(game.Board)
 	boardRunes[position] = rune(expectedSymbol[0])
 	game.Board = string(boardRunes)
 
-	// --- Check Game Outcome ---
 	if winnerSymbol := checkWinner(game.Board); winnerSymbol != "" {
 		game.Status = "finished"
 		if winnerSymbol == "X" {
@@ -168,23 +196,18 @@ func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*dom
 		} else {
 			game.WinnerID = game.PlayerOID
 		}
-		// Update player statistics for the winner and loser
 		if game.WinnerID != nil {
 			winner, err := s.repo.GetPlayerByID(*game.WinnerID)
 			if err == nil && winner != nil {
 				winner.Wins++
-				if err := s.repo.UpdatePlayer(winner); err != nil {
-					// Log the error but don't fail the game move
-					// The game move itself was successful, just the stats update failed
-				}
+				s.repo.UpdatePlayer(winner)
 			}
-			// Update loser stats
 			var loserID *uint
 			if winner != nil && game.WinnerID != nil && *game.WinnerID == winner.ID {
 				if game.WinnerID == game.PlayerXID {
-					loserID = game.PlayerOID // X won, O lost
+					loserID = game.PlayerOID
 				} else {
-					loserID = game.PlayerXID // O won, X lost
+					loserID = game.PlayerXID
 				}
 			}
 			if loserID != nil {
@@ -195,9 +218,8 @@ func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*dom
 				}
 			}
 		}
-	} else if !strings.Contains(game.Board, " ") { // Draw
+	} else if !strings.Contains(game.Board, " ") {
 		game.Status = "finished"
-		// Update player statistics for a draw
 		if game.PlayerXID != nil {
 			playerX, err := s.repo.GetPlayerByID(*game.PlayerXID)
 			if err == nil && playerX != nil {
@@ -212,7 +234,7 @@ func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*dom
 				s.repo.UpdatePlayer(playerO)
 			}
 		}
-	} else { // Continue play
+	} else {
 		game.CurrentTurn = map[string]string{"X": "O", "O": "X"}[game.CurrentTurn]
 	}
 
@@ -222,12 +244,20 @@ func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*dom
 	return game, nil
 }
 
-// checkWinner determines if there is a winner based on the board state.
+/*
+ * checkWinner determines the winner symbol ("X" or "O") based on board state.
+ *
+ * Parameters:
+ *   - board (string): The current game board.
+ *
+ * Returns:
+ *   - string: The winner symbol if there is a winner, otherwise an empty string.
+ */
 func checkWinner(board string) string {
 	winConditions := [8][3]int{
-		{0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // Rows
-		{0, 3, 6}, {1, 4, 7}, {2, 5, 8}, // Columns
-		{0, 4, 8}, {2, 4, 6}, // Diagonals
+		{0, 1, 2}, {3, 4, 5}, {6, 7, 8},
+		{0, 3, 6}, {1, 4, 7}, {2, 5, 8},
+		{0, 4, 8}, {2, 4, 6},
 	}
 
 	for _, c := range winConditions {

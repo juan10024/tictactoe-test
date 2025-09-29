@@ -1,12 +1,12 @@
-// backend/internal/core/domain/game.go
 /*
- * Domain Models
- *
- * This file defines the core data structures (entities) of the application.
- * These structs represent the fundamental concepts of the Tic-Tac-Toe game
- * and are used across all layers, from database persistence with GORM tags
- * to the business logic in services.
+ * file: game.go
+ * package: domain
+ * description:
+ * 			This file defines the core data structures (entities) of the application.
+ * 			Used across all layers, from database persistence with GORM tags
+ * 			to the business logic in services.
  */
+
 package domain
 
 import (
@@ -37,14 +37,15 @@ type Game struct {
 	PlayerO     Player `gorm:"foreignKey:PlayerOID"`
 	WinnerID    *uint
 	Winner      Player `gorm:"foreignKey:WinnerID"`
-	Status      string `gorm:"size:20;not null"` // e.g., "waiting", "in_progress", "finished"
+	Status      string `gorm:"size:20;not null"`
 	Board       string `gorm:"type:char(9);not null"`
 	CurrentTurn string `gorm:"type:char(1);not null"`
 }
 
-// GameMove represents a single move made in a game.
-// This is useful for auditing or replaying games, though not strictly required
-// by the current feature set. It demonstrates a more complete domain model.
+/* GameMove represents a single move made in a game.
+ * This is useful for auditing or replaying games, though not strictly required
+ */
+
 type GameMove struct {
 	gorm.Model
 	GameID   uint

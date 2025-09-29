@@ -1,4 +1,10 @@
-// backend/internal/adapters/handlers/handlers.go
+/*
+ * file: handlers.go
+ * package: handlers
+ * description:
+ *     Defines the game-related HTTP requests (if any were needed).
+ */
+
 package handlers
 
 import (

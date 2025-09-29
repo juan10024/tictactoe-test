@@ -1,11 +1,11 @@
-// backend/internal/adapters/db/db.go
 /*
- * Database Adapter
- *
- * This package is responsible for establishing and configuring the connection
- * to the PostgreSQL database using GORM. It includes connection pooling settings
- * for performance and resilience and handles schema auto-migration.
+ * file: db.go
+ * package: db
+ * description:
+ *     This package is responsible for establishing and configuring the connection
+ *     to the PostgreSQL database using GORM.
  */
+
 package db
 
 import (
