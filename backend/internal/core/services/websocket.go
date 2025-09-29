@@ -115,14 +115,11 @@ func ServeWs(hub *Hub, gameService *GameService, w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Determine if the client is an observer
+	// Determinar si el cliente es un observador
 	isObserver := false
-	if game.Status == "in_progress" &&
-		game.PlayerXID != nil && *game.PlayerXID != player.ID &&
-		game.PlayerOID != nil && *game.PlayerOID != player.ID {
-		isObserver = true
-	} else if game.PlayerXID != nil && *game.PlayerXID != player.ID &&
-		game.PlayerOID != nil && *game.PlayerOID != player.ID {
+	if game.Status == "in_progress" ||
+		(game.PlayerXID != nil && *game.PlayerXID != player.ID &&
+			game.PlayerOID != nil && *game.PlayerOID != player.ID) {
 		isObserver = true
 	}
 
@@ -141,27 +138,15 @@ func ServeWs(hub *Hub, gameService *GameService, w http.ResponseWriter, r *http.
 	broadcastGameState(hub, gameService, roomID)
 
 	// Check if we should start the game (only if we're not an observer and game is waiting)
-	if !isObserver && game.Status == "waiting" {
-		// Get the latest game state to avoid race conditions
-		latestGame, err := gameService.repo.GetByRoomID(roomID)
-		if err != nil {
-			log.Printf("ERROR: Could not get latest game state for room %s: %v", roomID, err)
+	if !isObserver && game.Status == "waiting" && game.PlayerXID != nil && game.PlayerOID != nil {
+		// Update game to in_progress
+		game.Status = "in_progress"
+		game.CurrentTurn = "X"
+		if err := gameService.repo.Update(game); err != nil {
+			log.Printf("ERROR: Could not start game in room %s: %v", roomID, err)
 		} else {
-			// Double-check that we have two players and game is still waiting
-			if latestGame.Status == "waiting" &&
-				latestGame.PlayerXID != nil &&
-				latestGame.PlayerOID != nil {
-
-				// Update game to in_progress
-				latestGame.Status = "in_progress"
-				latestGame.CurrentTurn = "X"
-				if err := gameService.repo.Update(latestGame); err != nil {
-					log.Printf("ERROR: Could not start game in room %s: %v", roomID, err)
-				} else {
-					// Broadcast the updated game state
-					broadcastGameState(hub, gameService, roomID)
-				}
-			}
+			// Broadcast the updated game state
+			broadcastGameState(hub, gameService, roomID)
 		}
 	}
 

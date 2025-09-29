@@ -6,12 +6,14 @@ import { Gamepad2 } from 'lucide-react';
 const PlayAgainConfirmationModal = memo(() => {
   const playAgainRequestingPlayer = useGameStore(state => state.playAgainRequestingPlayer);
   const clearPlayAgainRequest = useGameStore(state => state.clearPlayAgainRequest);
-  const resetGame = useGameStore(state => state.resetGame);
+  const restarGame = useGameStore(state => state.resetGame);
+  const respondToPlayAgain = useGameStore(state => state.respondToPlayAgain);
 
   if (!playAgainRequestingPlayer) return null;
 
   const handleAccept = () => {
-    resetGame();
+    restarGame();
+    respondToPlayAgain(true); 
     clearPlayAgainRequest();
 
     const event = new CustomEvent('showGameBoard');
@@ -19,8 +21,8 @@ const PlayAgainConfirmationModal = memo(() => {
   };
 
   const handleDecline = () => {
+    respondToPlayAgain(false); 
     clearPlayAgainRequest();
-    window.dispatchEvent(new CustomEvent('showGameMenu'));
   };
 
   return (

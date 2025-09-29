@@ -18,13 +18,9 @@ const PlayerStatsPage = () => {
       navigate('/');
       return;
     }
-
-    // No conectar WebSocket aquí, ya que estamos en la página de estadísticas
-    // La conexión se mantiene desde GameRoom
   }, [roomId, playerName, navigate]);
 
   const handleBackToGame = () => {
-    // No desconectar, solo navegar de vuelta
     navigate(`/room/${roomId}?playerName=${encodeURIComponent(playerName)}`);
   };
 

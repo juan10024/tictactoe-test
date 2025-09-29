@@ -55,9 +55,9 @@ interface GameStoreActions {
   makeMove: (position: number) => void;
   resetGame: () => void;
   resetError: () => void;
+  respondToPlayAgain: (accepted: boolean) => void;
   confirmGameStart: (confirm: boolean) => void;
   showCustomError: (message: string) => void;
-  // Nuevas acciones para los modales
   setShowEndGameModal: (show: boolean) => void;
   setShowPlayAgainConfirmation: (show: boolean) => void;
   setPlayAgainRequest: (playerName: string) => void;
@@ -166,18 +166,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
                 showPlayAgainConfirmation: true,
                 playAgainRequestingPlayer: message.requestingPlayer
               });
+              showWaitingModal(message.requestingPlayer, currentPlayerName || '');
             }
             break;
           }
 
-          case 'play_again_menu_request': {
-            const { playerName: currentPlayerName } = get();
-            if (message.requestingPlayer !== currentPlayerName) {
-              set({
-                showPlayAgainConfirmation: true,
-                playAgainRequestingPlayer: message.requestingPlayer
-              });
-            }
+          case 'play_again_waiting': {
+            break;
+          }
+
+          case 'play_again_accepted': {
+            const event = new CustomEvent('playAgainAccepted');
+            window.dispatchEvent(event);
+            handlePlayAgainAccept();
+            break;
+          }
+
+          case 'play_again_rejected': {
+            const event = new CustomEvent('playAgainRejected', {
+              detail: { rejectedBy: message.rejectedBy }
+            });
+            window.dispatchEvent(event);
+            handlePlayAgainReject(message.rejectedBy);
             break;
           }
 
@@ -219,6 +229,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
         showPlayAgainConfirmation: false,
         playAgainRequestingPlayer: null,
       });
+  },
+
+  respondToPlayAgain: (accepted: boolean) => {
+    const { socket } = get();
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'play_again_response',
+        payload: { accepted }
+      }));
+    }
   },
 
   makeMove: (position: number) => {
@@ -302,22 +322,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setShowEndGameModal: (show) => set({ showEndGameModal: show }),
   setShowPlayAgainConfirmation: (show) => set({ showPlayAgainConfirmation: show }),
 
-setPlayAgainRequest: (playerName) => {
-  const { socket, setShowEndGameModal, gameState } = get();
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    // Determinar qué tipo de solicitud enviar
-    const isFromMenu = gameState?.Status === 'finished';
-    
-    const messageType = isFromMenu ? 'play_again_menu_request' : 'playAgainRequest';
-    
-    // Cerrar el modal de fin de juego para el jugador que solicita jugar de nuevo
-    setShowEndGameModal(false);
-    socket.send(JSON.stringify({
-      type: messageType,
-      payload: { requestingPlayer: playerName }
-    }));
-  }
-},
+  setPlayAgainRequest: (playerName) => {
+    const { socket, setShowEndGameModal } = get();
+    if (socket && socket.readyState === WebSocket.OPEN) {
+
+
+      const messageType = 'playAgainRequest';
+
+      setShowEndGameModal(false);
+      socket.send(JSON.stringify({
+        type: messageType,
+        payload: { requestingPlayer: playerName }
+      }));
+    }
+  },
 
   clearPlayAgainRequest: () => set({
     showPlayAgainConfirmation: false,
@@ -343,3 +361,35 @@ function calculateWinningLine(board: string): number[] | null {
   }
   return null;
 }
+
+export const showWaitingModal = (requestingPlayer: string, opponentName: string) => {
+  const event = new CustomEvent('showWaitingModal', {
+    detail: { requestingPlayer, opponentName }
+  });
+  window.dispatchEvent(event);
+};
+
+export const showRejectionMessage = (rejectedBy: string) => {
+  const event = new CustomEvent('showRejectionMessage', {
+    detail: { rejectedBy }
+  });
+  window.dispatchEvent(event);
+};
+
+export const handlePlayAgainAccept = () => {
+  const { resetGame } = useGameStore.getState();
+  resetGame();
+
+  const event = new CustomEvent('showGameBoard');
+  window.dispatchEvent(event);
+};
+
+export const handlePlayAgainReject = (rejectedBy: string) => {
+  const { clearPlayAgainRequest } = useGameStore.getState();
+  clearPlayAgainRequest();
+
+  showRejectionMessage(rejectedBy);
+
+  const event = new CustomEvent('showGameMenu');
+  window.dispatchEvent(event);
+};

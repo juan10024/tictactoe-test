@@ -40,7 +40,7 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 	existingGame, err := s.repo.GetByRoomID(roomID)
 
 	if err != nil { // El juego no existe
-		// Intenta crear un nuevo juego, pero maneja el caso de que otro proceso lo haya creado mientras
+		// Crear un nuevo juego
 		newGame := &domain.Game{
 			RoomID:      roomID,
 			PlayerXID:   &player.ID,
@@ -49,76 +49,74 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 			Board:       "         ",
 			CurrentTurn: "X",
 		}
-		// Usamos Create que fallará si el RoomID ya existe
+
+		// Usamos Create que fallará si el RoomID ya existe (clave duplicada)
 		if createErr := s.repo.Create(newGame); createErr != nil {
 			// Si falla por clave duplicada, significa que otro proceso lo creó
-			// Intentamos obtener el juego recién creado por el otro proceso
+			// Volver a intentar obtener el juego recién creado
 			finalGame, finalErr := s.repo.GetByRoomID(roomID)
 			if finalErr != nil {
-				return nil, nil, errors.New("failed to create or retrieve game after creation attempt: " + finalErr.Error())
+				return nil, nil, errors.New("failed to retrieve game after creation attempt: " + finalErr.Error())
 			}
-			// Verificamos si el jugador actual puede unirse
-			if finalGame.PlayerX != (domain.Player{}) && strings.EqualFold(finalGame.PlayerX.Name, playerName) {
-				return nil, nil, errors.New("a player with this name already exists in the room")
+
+			// Verificar si el jugador actual puede unirse
+			if (finalGame.PlayerXID != nil && *finalGame.PlayerXID == player.ID) ||
+				(finalGame.PlayerOID != nil && *finalGame.PlayerOID == player.ID) {
+				// Jugador ya está en la sala
+				return finalGame, player, nil
 			}
-			if finalGame.PlayerO != (domain.Player{}) && strings.EqualFold(finalGame.PlayerO.Name, playerName) {
-				return nil, nil, errors.New("a player with this name already exists in the room")
+
+			// Verificar si hay espacio para unirse
+			if finalGame.PlayerXID != nil && finalGame.PlayerOID != nil {
+				// Sala llena, convertir en observador
+				return finalGame, player, nil
 			}
-			// Si puede unirse, lo dejamos como observador si el juego ya está en progreso o si está lleno
-			isObserver := (finalGame.Status == "in_progress" && finalGame.PlayerOID != nil && *finalGame.PlayerOID != player.ID) ||
-				(finalGame.PlayerXID != nil && *finalGame.PlayerXID != player.ID && finalGame.PlayerOID != nil && *finalGame.PlayerOID != player.ID)
-			if isObserver {
-				return finalGame, player, nil // Retorna el juego existente como observador
+
+			// Intentar unirse como segundo jugador
+			if finalGame.PlayerXID != nil && *finalGame.PlayerXID != player.ID && finalGame.PlayerOID == nil {
+				finalGame.PlayerOID = &player.ID
+				finalGame.PlayerO = *player
+				if updateErr := s.repo.Update(finalGame); updateErr != nil {
+					return nil, nil, updateErr
+				}
+				return finalGame, player, nil
 			}
-			return finalGame, player, nil // Retorna como jugador si hay espacio
+
+			return finalGame, player, nil
 		}
 		// Si la creación fue exitosa, retornamos el nuevo juego
 		return newGame, player, nil
 	}
 
-	// El juego ya existía, verificamos nombres duplicados
-	// Normalize player name for comparison (case-insensitive)
-	normalizedPlayerName := strings.ToLower(strings.TrimSpace(playerName))
-	if existingGame.PlayerX != (domain.Player{}) && strings.ToLower(existingGame.PlayerX.Name) == normalizedPlayerName {
-		return nil, nil, errors.New("a player with this name already exists in the room")
-	}
-	if existingGame.PlayerO != (domain.Player{}) && strings.ToLower(existingGame.PlayerO.Name) == normalizedPlayerName {
-		return nil, nil, errors.New("a player with this name already already exists in the room")
-	}
-
-	// Game exists, check if we can join as a player or if we become an observer
-	// Si el juego ya está en progreso o ya tiene 2 jugadores, se convierte en observador
-	isObserver := existingGame.Status == "in_progress" || (existingGame.PlayerXID != nil && existingGame.PlayerOID != nil)
-	if isObserver {
+	// El juego ya existía
+	// Verificar si el jugador ya está en la sala
+	if (existingGame.PlayerXID != nil && *existingGame.PlayerXID == player.ID) ||
+		(existingGame.PlayerOID != nil && *existingGame.PlayerOID == player.ID) {
 		return existingGame, player, nil
 	}
 
-	// Game exists, attempt to join as the second player.
-	if existingGame.PlayerOID == nil && *existingGame.PlayerXID != player.ID {
+	// Verificar si hay espacio para unirse
+	if existingGame.PlayerXID != nil && *existingGame.PlayerXID == player.ID {
+		return nil, nil, errors.New("you are already in this room")
+	}
+
+	if existingGame.PlayerOID != nil && *existingGame.PlayerOID == player.ID {
+		return nil, nil, errors.New("you are already in this room")
+	}
+
+	// Verificar si hay espacio para unirse como jugador
+	if existingGame.Status == "waiting" && existingGame.PlayerOID == nil && existingGame.PlayerXID != nil {
+		// Unirse como segundo jugador
 		existingGame.PlayerOID = &player.ID
 		existingGame.PlayerO = *player
-		// El estado permanece como "waiting" hasta que el primer jugador confirme
-		// existingGame.Status = "in_progress" // <-- Esto se hará después de la confirmación
-		// existingGame.CurrentTurn = "X" // <-- Esto se hará después de la confirmación
 		if err := s.repo.Update(existingGame); err != nil {
 			return nil, nil, err
 		}
-		return existingGame, player, nil
-	} else if existingGame.PlayerXID == nil { // Should not happen with current logic, but defensive.
-		existingGame.PlayerXID = &player.ID
-		existingGame.PlayerX = *player
-		if existingGame.PlayerOID != nil {
-			// existingGame.Status = "in_progress" // <-- Esto se hará después de la confirmación
-			// existingGame.CurrentTurn = "X" // <-- Esto se hará después de la confirmación
-		}
-		if err := s.repo.Update(existingGame); err != nil {
-			return nil, nil, err
-		}
-		return existingGame, player, nil
-	} else {
-		// Room is full, player becomes an observer
 		return existingGame, player, nil
 	}
+
+	// Convertir en observador
+	return existingGame, player, nil
 }
 
 // MakeMove processes a player's move, validates it, updates the game state, and checks for a winner.
