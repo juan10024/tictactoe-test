@@ -12,8 +12,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { useThemeStore } from '../hooks/useTheme';
-import { Sun, Moon, LogIn, PlusCircle } from 'lucide-react';
+import { LogIn, PlusCircle } from 'lucide-react';
 import { joinRoom } from '../services/roomService'; // Asegúrate de tener esta función
 
 const HomePage = () => {
@@ -22,7 +21,6 @@ const HomePage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useThemeStore();
 
   const handleCreateRoom = async () => {
     if (!playerName.trim()) {
@@ -94,8 +92,7 @@ const HomePage = () => {
       setIsLoading(false);
     }
   };
-  
-  // Placeholder for the company logo
+    // Placeholder for the company logo
   const CompanyLogo = () => (
     <svg height="60" width="60" className="text-cyan-500 dark:text-cyan-300" viewBox="0 0 100 100">
       <path fill="currentColor" d="M50 0 L100 25 L100 75 L50 100 L0 75 L0 25 Z M50 15 L85 32.5 L85 67.5 L50 85 L15 67.5 L15 32.5 Z" />
@@ -104,20 +101,24 @@ const HomePage = () => {
   );
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
-      <div className="absolute top-4 right-4">
-        <button onClick={toggleTheme} className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-          {theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
-        </button>
-      </div>
-      
-      <div className="text-center">
-        <CompanyLogo />
-        <h1 className="text-5xl font-bold mt-4">Tic-Tac-Toe</h1>
-        <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">Pro Edition</p>
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-120px)]">
+      <div className="text-center mb-10">
+        {/* Título con colores y animación */}
+        <h1 className="text-4xl font-bold mb-4">
+          <CompanyLogo />
+          <span className="bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 bg-clip-text text-transparent animate-pulse">
+            Tic-Tac-Toe
+          </span>
+          <span className="block text-2xl mt-2 text-gray-700 dark:text-gray-300 font-normal">
+            Pro Edition
+          </span>
+        </h1>
+        <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
+          The ultimate gaming experience
+        </p>
       </div>
 
-      <div className="w-full max-w-sm p-8 mt-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl">
+      <div className="w-full max-w-sm p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl">
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             {error}
@@ -125,7 +126,7 @@ const HomePage = () => {
         )}
         
         <div className="mb-6">
-          <label htmlFor="playerName" className="block text-sm font-medium mb-2">Player Name</label>
+          <label htmlFor="playerName" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Player Name</label>
           <input
             id="playerName"
             type="text"
@@ -135,7 +136,7 @@ const HomePage = () => {
               setError(''); // Limpiar error cuando cambia el nombre
             }}
             placeholder="Enter your name (max 15 chars)"
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-white"
             maxLength={15}
           />
         </div>
@@ -175,7 +176,7 @@ const HomePage = () => {
               setError(''); // Limpiar error cuando cambia el ID
             }}
             placeholder="Enter Room ID to join"
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-white"
           />
           <button
             type="submit"
