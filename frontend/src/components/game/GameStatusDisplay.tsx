@@ -1,6 +1,22 @@
-// frontend/src/components/GameStatusDisplay.tsx
+/*
+ * file: GameStatusDisplay.tsx
+ * component: GameStatusDisplay
+ * description:
+ *     Displays the current status of the game, indicating whether the user is an observer,
+ *     waiting for an opponent, in a match, or if the game has finished.
+ */
+
 import { useGameStore } from '../../store/gameStore';
 
+/*
+ * GameStatusDisplay shows the current status of the game based on the store state.
+ *
+ * Parameters:
+ *   - None (uses Zustand store state internally).
+ *
+ * Returns:
+ *   - JSX.Element: A status message indicating observer mode, waiting, in progress, or finished.
+ */
 const GameStatusDisplay = () => {
   const gameState = useGameStore((state) => state.gameState);
   const isObserver = useGameStore((state) => state.isObserver);

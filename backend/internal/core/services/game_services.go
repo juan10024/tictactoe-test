@@ -86,9 +86,21 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 		}
 
 		if createErr := s.repo.Create(newGame); createErr != nil {
+
 			finalGame, finalErr := s.repo.GetByRoomID(roomID)
 			if finalErr != nil {
 				return nil, nil, errors.New("failed to retrieve game after creation attempt: " + finalErr.Error())
+			}
+
+			if finalGame.PlayerXID != nil && finalGame.PlayerX.Name != "" {
+				if strings.EqualFold(finalGame.PlayerX.Name, playerName) {
+					return nil, nil, errors.New("a player with this name already exists in the room")
+				}
+			}
+			if finalGame.PlayerOID != nil && finalGame.PlayerO.Name != "" {
+				if strings.EqualFold(finalGame.PlayerO.Name, playerName) {
+					return nil, nil, errors.New("a player with this name already exists in the room")
+				}
 			}
 
 			if (finalGame.PlayerXID != nil && *finalGame.PlayerXID == player.ID) ||
@@ -97,7 +109,7 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 			}
 
 			if finalGame.PlayerXID != nil && finalGame.PlayerOID != nil {
-				return finalGame, player, nil
+				return finalGame, player, nil // Convertir en observador
 			}
 
 			if finalGame.PlayerXID != nil && *finalGame.PlayerXID != player.ID && finalGame.PlayerOID == nil {
@@ -114,17 +126,17 @@ func (s *GameService) HandleJoinRoom(roomID, playerName string) (*domain.Game, *
 		return newGame, player, nil
 	}
 
+	if existingGame.PlayerX.Name != "" && strings.EqualFold(existingGame.PlayerX.Name, playerName) {
+		return nil, nil, errors.New("a player with this name already exists in the room")
+	}
+
+	if existingGame.PlayerO.Name != "" && strings.EqualFold(existingGame.PlayerO.Name, playerName) {
+		return nil, nil, errors.New("a player with this name already exists in the room")
+	}
+
 	if (existingGame.PlayerXID != nil && *existingGame.PlayerXID == player.ID) ||
 		(existingGame.PlayerOID != nil && *existingGame.PlayerOID == player.ID) {
 		return existingGame, player, nil
-	}
-
-	if existingGame.PlayerXID != nil && *existingGame.PlayerXID == player.ID {
-		return nil, nil, errors.New("you are already in this room")
-	}
-
-	if existingGame.PlayerOID != nil && *existingGame.PlayerOID == player.ID {
-		return nil, nil, errors.New("you are already in this room")
 	}
 
 	if existingGame.Status == "waiting" && existingGame.PlayerOID == nil && existingGame.PlayerXID != nil {

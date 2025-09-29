@@ -1,12 +1,35 @@
-// frontend/src/components/GameInfo.tsx
+/*
+ * file: GameInfo.tsx
+ * component: GameInfo
+ * description:
+ *     Displays real-time game statistics, including player names, wins/losses/draws,
+ *     game status, and the current turn. Pulls state from the global game store and
+ *     updates reactively as the game progresses.
+ */
+
 import { memo, useMemo } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { Trophy, BarChart3 } from 'lucide-react';
 
+/*
+ * GameInfo displays player statistics, game status, and the current turn.
+ *
+ * Parameters:
+ *   - None (relies on Zustand gameStore state).
+ *
+ * Returns:
+ *   - JSX.Element: A panel with player stats, game status, and current turn indicator.
+ */
 const GameInfo = memo(() => {
   const gameState = useGameStore((state) => state.gameState);
   const players = useGameStore((state) => state.players);
 
+  /*
+   * currentPlayerName computes the name of the player whose turn it is.
+   *
+   * Returns:
+   *   - string: The display name of the current player, or fallback ("Player X"/"Player O").
+   */
   const currentPlayerName = useMemo(() => {
     if (!gameState) return '';
     return gameState.CurrentTurn === 'X' 

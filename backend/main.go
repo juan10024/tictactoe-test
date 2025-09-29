@@ -1,13 +1,12 @@
-// backend/main.go
 /*
- * Entry Point for the Tic-Tac-Toe Backend Service.
- *
- * This file initializes the application by setting up dependencies, configuring the database,
- * establishing API routes, and launching the web server. It follows a dependency injection
- * pattern to wire together components, promoting a decoupled and testable architecture.
- * The architecture is inspired by "Screaming Architecture" principles, where the project
- * structure reflects the application's domain.
+ * file: main.go
+ * package: main
+ * description:
+ *     This file initializes the application by setting up dependencies, configuring the database,
+ *     establishing API routes, and launching the web server. It follows a dependency injection
+ *     pattern to wire together components, promoting a decoupled and testable architecture.
  */
+
 package main
 
 import (
@@ -21,48 +20,63 @@ import (
 	"github.com/juan10024/tictactoe-test/internal/infra/repository"
 )
 
+/*
+ * main is the entry point of the application.
+ *
+ * This function performs the following tasks:
+ *   - Initializes the database connection pool.
+ *   - Sets up repositories, services, and the WebSocket hub (dependency injection).
+ *   - Configures HTTP handlers and registers API routes.
+ *   - Creates and starts the HTTP server with timeouts and CORS middleware.
+ *
+ * Parameters:
+ *   - None.
+ *
+ * Returns:
+ *   - None.
+ */
 func main() {
-	// 1. Database Initialization
+	// Database Initialization
 	dbConn, err := db.InitializeDatabase()
 	if err != nil {
 		log.Fatalf("FATAL: Database initialization failed: %v", err)
 	}
 	log.Println("SUCCESS: Database connection pool established.")
 
-	// 2. Dependency Injection (repositories, services, hub)
+	// Dependency Injection
 	gameRepo := repository.NewGormGameRepository(dbConn)
 	statsRepo := repository.NewGormStatsRepository(dbConn)
 
 	hub := services.NewHub()
-	go hub.Run() // Run the WebSocket hub in a separate goroutine.
+	go hub.Run()
 
 	gameService := services.NewGameService(gameRepo)
 	statsService := services.NewStatsService(statsRepo)
 
-	// 3. Handler & Router Configuration
-	// We create handlers so they are available for wiring routes.
-	// NOTE: ensure handlers expose methods for each route; if you don't use
-	// a handler immediately, you must either register routes or discard the variable.
+	// Handler & Router Configuration
 	gameHandler := handlers.NewGameHandler(gameService, hub)
-	_ = gameHandler // avoid "declared and not used" compile error
-	// TODO: register game routes below when handler methods are implemented:
-	// e.g. router.HandleFunc("/api/games", gameHandler.ListGames)
+	_ = gameHandler
 
 	statsHandler := handlers.NewStatsHandler(statsService)
-	wsHandler := handlers.NewWebSocketHandler(hub, gameService) // Inject GameService for join logic
+	wsHandler := handlers.NewWebSocketHandler(hub, gameService)
+	roomHandler := handlers.NewRoomHandler(gameService)
 
-	// 4. Router registration
+	// Router registration
 	router := http.NewServeMux()
-	// WebSocket endpoint (handlers should parse room/player from query or URL)
+
+	// Attach CORS middleware
+	corsHandler := corsMiddleware(router)
+
+	// Register endpoints
 	router.HandleFunc("/ws/join/", wsHandler.HandleConnection)
-	// Stats API
 	router.HandleFunc("/api/stats/ranking", statsHandler.GetRanking)
 	router.HandleFunc("/api/stats/general", statsHandler.GetGeneralStats)
+	router.HandleFunc("/api/rooms/join/", roomHandler.JoinRoom)
 
-	// 5. HTTP Server Configuration & Launch
+	// HTTP Server Configuration & Launch
 	server := &http.Server{
 		Addr:         ":8080",
-		Handler:      router,
+		Handler:      corsHandler,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
@@ -72,4 +86,28 @@ func main() {
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("FATAL: Could not start server: %v", err)
 	}
+}
+
+/*
+ * corsMiddleware adds CORS (Cross-Origin Resource Sharing) headers to HTTP responses.
+ *
+ * Parameters:
+ *   - next (http.Handler): The next handler in the chain.
+ *
+ * Returns:
+ *   - http.Handler: A wrapped handler that applies CORS headers before invoking the next handler.
+ */
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*") // Allow all origins (can be restricted)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

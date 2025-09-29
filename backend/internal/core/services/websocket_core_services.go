@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/juan10024/tictactoe-test/internal/core/domain"
 )
@@ -43,12 +44,31 @@ type GameStateBroadcast struct {
 func ServeWs(hub *Hub, gameService *GameService, w http.ResponseWriter, r *http.Request, roomID, playerName string) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Println("WebSocket upgrade error:", err)
 		return
 	}
 
 	game, player, err := gameService.HandleJoinRoom(roomID, playerName)
-	if err != nil {
+
+	if err != nil && strings.Contains(err.Error(), "already exists in the room") {
+		// Intentar obtener el juego existente para este jugador
+		existingGame, err2 := gameService.repo.GetByRoomID(roomID)
+		if err2 != nil {
+			log.Printf("ERROR: Could not get existing game: %v", err2)
+			conn.Close()
+			return
+		}
+
+		existingPlayer, err3 := gameService.repo.GetOrCreatePlayerByName(playerName)
+		if err3 != nil {
+			log.Printf("ERROR: Could not get player: %v", err3)
+			conn.Close()
+			return
+		}
+
+		game = existingGame
+		player = existingPlayer
+	} else if err != nil {
 		log.Printf("ERROR: Could not handle join room: %v", err)
 		conn.Close()
 		return

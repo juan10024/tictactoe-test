@@ -1,6 +1,19 @@
-// frontend/src/components/ErrorAlert.tsx
+/*
+ * file: ErrorAlert.tsx
+ * component: ErrorAlert
+ * description:
+ *     Displays an error alert when there is an active error message
+ *     in the game store. Provides a button to reset/clear the error.
+ */
+
 import { useGameStore } from '../../store/gameStore';
 
+/*
+ * ErrorAlert renders a dismissible error message if one exists in the store.
+ *
+ * Returns:
+ *   - JSX.Element | null: The rendered error alert component or null if no error exists.
+ */
 const ErrorAlert = () => {
   const error = useGameStore((state) => state.error);
   const resetError = useGameStore((state) => state.resetError);

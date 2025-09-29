@@ -1,4 +1,12 @@
-// frontend/src/components/stats/GameHistorySection.tsx
+/*
+ * file: GameHistorySection.tsx
+ * component: GameHistorySection
+ * description:
+ *     Displays a list of past games for a given room. Fetches the game history
+ *     from the backend API and shows information such as players, winner, number
+ *     of moves, date, and duration. Includes loading state and error handling.
+ */
+
 import { useEffect, useState } from 'react';
 import { BarChart3, Trophy, Users, RotateCcw } from 'lucide-react';
 
@@ -13,6 +21,15 @@ interface GameHistoryItem {
   duration: string;
 }
 
+/*
+ * GameHistorySection fetches and displays a list of games for a specific room.
+ *
+ * Parameters:
+ *   - roomId (string): The unique room identifier for which to fetch game history.
+ *
+ * Returns:
+ *   - JSX.Element: A section with game history, loading indicator, or error message.
+ */
 const GameHistorySection = ({ roomId }: { roomId: string; playerName: string }) => {
   const [gameHistory, setGameHistory] = useState<GameHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,7 +42,6 @@ const GameHistorySection = ({ roomId }: { roomId: string; playerName: string }) 
         const response = await fetch(`/api/rooms/${roomId}/history`);
 
         if (response.status === 404) {
-          // Endpoint no implementado aún, mostrar mensaje amigable
           setGameHistory([]);
           setError(null);
           return;

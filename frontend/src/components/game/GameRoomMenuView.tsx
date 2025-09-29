@@ -1,4 +1,11 @@
-// frontend/src/components/GameRoomMenuView.tsx
+/*
+ * file: GameRoomMenuView.tsx
+ * component: GameRoomMenuView
+ * description:
+ *     Displays the main menu view for a game room. Shows room info, error alerts,
+ *     action buttons (play, view stats, leave room), and a welcome modal for new players.
+ */
+
 import GameRoomHeader from './GameRoomHeader';
 import ErrorAlert from '../alerts/ErrorAlert';
 import ActionButtons from '../ui/ActionButtons';
@@ -17,6 +24,23 @@ interface GameRoomMenuViewProps {
   onCloseWelcomeModal: () => void;
 }
 
+/*
+ * GameRoomMenuView renders the lobby screen for a game room.
+ *
+ * Parameters:
+ *   - roomId (string): Unique identifier of the current room.
+ *   - playerName (string): Name of the player currently in the room.
+ *   - onCopyRoomId (function): Callback to copy the room ID to clipboard.
+ *   - onPlayGame (function): Callback triggered when the user clicks "Play Game".
+ *   - onViewStats (function): Callback triggered when the user clicks "View Stats".
+ *   - onLeaveRoom (function): Callback triggered when the user clicks "Leave Room".
+ *   - shouldShowContinueButton (boolean): Whether to show a button to resume an in-progress game.
+ *   - welcomeModalShown (boolean): Whether the welcome modal should be displayed.
+ *   - onCloseWelcomeModal (function): Callback to close the welcome modal.
+ *
+ * Returns:
+ *   - JSX.Element: Layout with header, error alerts, action buttons, status display, and modal.
+ */
 const GameRoomMenuView = ({ 
   roomId, 
   playerName, 

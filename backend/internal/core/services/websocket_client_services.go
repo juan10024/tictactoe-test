@@ -38,18 +38,23 @@ type Client struct {
  */
 func (c *Client) readPump(gs *GameService) {
 	defer func() {
+		log.Printf("Client readPump closing for player %s in room %s", c.playerName, c.room)
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
+
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	c.conn.SetPongHandler(func(string) error {
+		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
 
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				log.Printf("error in readPump for player %s: %v", c.playerName, err)
 			}
 			break
 		}
@@ -187,31 +192,36 @@ func (c *Client) readPump(gs *GameService) {
 func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
+		log.Printf("Client writePump closing for player %s in room %s", c.playerName, c.room)
 		ticker.Stop()
 		c.conn.Close()
 	}()
+
 	for {
 		select {
 		case message, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
+				log.Printf("Send channel closed for player %s", c.playerName)
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
 			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
+				log.Printf("Error in writePump for player %s: %v", c.playerName, err)
 				return
 			}
 			w.Write(message)
 
 			if err := w.Close(); err != nil {
+				log.Printf("Error closing writer for player %s: %v", c.playerName, err)
 				return
 			}
-
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Printf("Error sending ping for player %s: %v", c.playerName, err)
 				return
 			}
 		}

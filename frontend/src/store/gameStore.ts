@@ -45,6 +45,7 @@ interface GameStoreState {
   showPlayAgainConfirmation: boolean;
   playAgainRequestingPlayer: string | null;
   isReturningPlayer: boolean;
+  isValidationComplete: boolean;
   playerName?: string;
 }
 
@@ -83,6 +84,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   showPlayAgainConfirmation: false,
   playAgainRequestingPlayer: null,
   isReturningPlayer: false,
+  isValidationComplete: false,
 
   // Nueva acción para mostrar un error personalizado
   showCustomError: (message: string) => {
@@ -99,6 +101,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     ws.onopen = () => {
       set({
         isConnected: true,
+        isValidationComplete: true,
         socket: ws,
         error: null,
         winningLine: null,
@@ -211,10 +214,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     };
 
     ws.onerror = () => {
+      
       set({ error: 'WebSocket connection error.' });
     };
 
-    ws.onclose = () =>
+    ws.onclose = (event) =>
+      console.log('WebSocket closed:', event.code, event.reason);
       set({
         isConnected: false,
         socket: null,

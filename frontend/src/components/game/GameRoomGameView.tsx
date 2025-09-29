@@ -1,4 +1,12 @@
-// frontend/src/components/GameRoomGameView.tsx
+/*
+ * file: GameRoomGameView.tsx
+ * component: GameRoomGameView
+ * description:
+ *     Main container for the in-room game experience. Displays the game board,
+ *     player/game information, error alerts, and room header with controls
+ *     (copy room ID and back navigation).
+ */
+
 import { memo } from 'react';
 import GameRoomHeader from './GameRoomHeader';
 import ErrorAlert from '../alerts/ErrorAlert';
@@ -13,6 +21,19 @@ interface GameRoomGameViewProps {
   onBackClick: () => void;
 }
 
+/*
+ * GameRoomGameView renders the game room layout with header, board, stats, and alerts.
+ *
+ * Parameters:
+ *   - roomId (string): Unique identifier for the current room.
+ *   - playerName (string): Name of the player or observer.
+ *   - isObserver (boolean): Whether the current user is just spectating the game.
+ *   - onCopyRoomId (function): Callback triggered when user copies room ID.
+ *   - onBackClick (function): Callback triggered when user navigates back to home/lobby.
+ *
+ * Returns:
+ *   - JSX.Element: Responsive game room layout with board, stats, and actions.
+ */
 const GameRoomGameView = memo(({ 
   roomId, 
   playerName, 
