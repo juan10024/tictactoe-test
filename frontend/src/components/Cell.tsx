@@ -1,4 +1,10 @@
-// frontend/src/components/Cell.tsx
+/*
+ * file: Cell.tsx
+ * component: Cell
+ * description:
+ *     Represents a single cell in the game board.
+ *     Handles rendering of X/O values, winning highlights, and current turn state.
+ */
 
 interface CellProps {
   value: string;
@@ -20,10 +26,10 @@ const Cell = ({
       ? 'text-cyan-400 shadow-cyan-500/80 scale-110'
       : 'text-rose-400 shadow-rose-500/80 scale-110'
     : value === 'X'
-      ? 'text-cyan-400 shadow-cyan-500/50'
-      : value === 'O'
-      ? 'text-rose-400 shadow-rose-500/50'
-      : 'text-transparent';
+    ? 'text-cyan-400 shadow-cyan-500/50'
+    : value === 'O'
+    ? 'text-rose-400 shadow-rose-500/50'
+    : 'text-transparent';
 
   return (
     <button
@@ -41,9 +47,9 @@ const Cell = ({
         ${isCurrentTurn ? 'ring-4 ring-cyan-400 dark:ring-cyan-500 ring-opacity-80' : ''}
       `}
       disabled={disabled}
-      aria-label={`Casilla ${value === ' ' ? 'vacía' : value}`}
+      aria-label={`Cell ${value === ' ' ? 'empty' : value}`}
     >
-      <span 
+      <span
         className={`${symbolClass} transition-all duration-500 
                     ${value !== ' ' ? 'drop-shadow-lg' : ''}`}
       >

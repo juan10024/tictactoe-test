@@ -1,56 +1,63 @@
-/**
- * Full-screen Preloader with typewriter effect and curtain animation.
- * - Shows quote letter by letter, then reveals content with curtain animation
- * - Accessible and non-interactive while showing.
+/*
+ * file: Preloader.tsx
+ * component: Preloader
+ * description:
+ *     Full-screen preloader with typewriter effect and curtain animation.
+ *     - Displays a quote character by character
+ *     - Then performs a curtain reveal animation
+ *     - Accessible, blocks interactions while visible
  */
-import { useEffect, useState } from 'react'
+
+import { useEffect, useState } from 'react';
 
 interface PreloaderProps {
-  onFinished: () => void
-  // optional duration in ms to show the preloader before hiding
-  visibleDuration?: number
+  onFinished: () => void;
+  /** Optional duration in ms before hiding the preloader */
+  visibleDuration?: number;
 }
 
 const Preloader = ({ onFinished }: PreloaderProps) => {
-  const [isTyping, setIsTyping] = useState(true)
-  const [displayText, setDisplayText] = useState('')
-  const [isHiding, setIsHiding] = useState(false)
-  
-  const quote = '"The only way to do great work is to love what you do."'
-  const author = 'Steve Jobs'
+  const [isTyping, setIsTyping] = useState(true);
+  const [displayText, setDisplayText] = useState('');
+  const [isHiding, setIsHiding] = useState(false);
+
+  const quote = '"The only way to do great work is to love what you do."';
+  const author = 'Steve Jobs';
 
   useEffect(() => {
+    let index = 0;
+
     // Typewriter effect
-    let index = 0
     const typingInterval = setInterval(() => {
       if (index < quote.length) {
-        setDisplayText(quote.slice(0, index + 1))
-        index++
+        setDisplayText(quote.slice(0, index + 1));
+        index++;
       } else {
-        clearInterval(typingInterval)
-        setIsTyping(false)
-        
-        // Wait a bit after typing is complete, then start curtain animation
+        clearInterval(typingInterval);
+        setIsTyping(false);
+
+        // After typing finishes, start curtain animation
         const curtainTimeout = setTimeout(() => {
-          setIsHiding(true)
-          // Wait for animation to complete before calling onFinished
+          setIsHiding(true);
+
+          // Wait for curtain animation to complete
           const finishTimeout = setTimeout(() => {
-            onFinished()
-          }, 1000) // match the CSS transition duration
-          return () => clearTimeout(finishTimeout)
-        }, 1000) // wait 1 second after typing completes
-        
-        return () => clearTimeout(curtainTimeout)
+            onFinished();
+          }, 1000); 
+
+          return () => clearTimeout(finishTimeout);
+        }, 1000); 
+
+        return () => clearTimeout(curtainTimeout);
       }
-    }, 50) // typing speed: 50ms per character
+    }, 50); 
 
     return () => {
-      clearInterval(typingInterval)
-    }
-  }, [onFinished, quote])
+      clearInterval(typingInterval);
+    };
+  }, [onFinished, quote]);
 
   return (
-    // Fixed overlay that fully covers the app and prevents interactions underneath
     <div
       aria-hidden={isHiding}
       aria-live="polite"
@@ -58,14 +65,14 @@ const Preloader = ({ onFinished }: PreloaderProps) => {
         isHiding ? 'pointer-events-none' : 'pointer-events-auto'
       }`}
     >
-      {/* Solid overlay background that fades out when hiding */}
+      {/* Background overlay */}
       <div
         className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
           isHiding ? 'opacity-0' : 'opacity-100'
         } bg-white dark:bg-gray-900`}
       />
-      
-      {/* Curtains (left + right) animate to reveal the content */}
+
+      {/* Curtains */}
       <div
         className={`absolute top-0 left-0 h-full w-1/2 bg-gray-800 transform transition-transform duration-1000 ease-in-out ${
           isHiding ? '-translate-x-full' : 'translate-x-0'
@@ -76,8 +83,8 @@ const Preloader = ({ onFinished }: PreloaderProps) => {
           isHiding ? 'translate-x-full' : 'translate-x-0'
         }`}
       />
-      
-      {/* Center content */}
+
+      {/* Quote and author */}
       <div
         className={`relative z-10 px-6 text-center max-w-3xl transition-opacity duration-700 ${
           isHiding ? 'opacity-0' : 'opacity-100'
@@ -85,14 +92,16 @@ const Preloader = ({ onFinished }: PreloaderProps) => {
       >
         <h1 className="text-2xl md:text-4xl font-serif text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 mb-4">
           {displayText}
-          {isTyping && <span className="ml-1 inline-block w-1 h-8 bg-current align-bottom animate-pulse"></span>}
+          {isTyping && (
+            <span className="ml-1 inline-block w-1 h-8 bg-current align-bottom animate-pulse"></span>
+          )}
         </h1>
         <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 font-medium">
           {author}
         </p>
       </div>
     </div>
-  )
-}
+  );
+};
 
 export default Preloader;

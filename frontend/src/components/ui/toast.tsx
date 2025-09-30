@@ -1,26 +1,25 @@
-// frontend/src/components/ui/toast.tsx
 /*
- * Minimalist Toast Component (Functional)
- *
- * This provides a basic, functional implementation for the Toast UI components.
- * It's designed to be dependency-free and satisfy the imports from the Toaster.
- * This avoids "module not found" errors during development.
- * You can replace this with a more feature-rich library like `shadcn/ui` later.
+ * file: toast.tsx
+ * component: Minimalist Toast UI
+ * description:
+ *     Provides a basic, dependency-free implementation of Toast components. 
+ *     Meant to prevent "module not found" errors and serve as a placeholder. 
+ *     Can be replaced with a feature-rich library like `shadcn/ui`.
  */
+
 import React from 'react';
 
-// Basic context for managing toasts
+// Context definition (placeholder, no state management yet)
 export const ToastContext = React.createContext<{
   addToast: (toast: Omit<ToastProps, 'id'>) => void;
 }>({ addToast: () => {} });
 
-// Component wrappers with basic styling
 export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
-  // A real implementation would have state management here.
-  // For now, it just renders children.
+  // A real implementation should manage toast state here
   return <>{children}</>;
 };
 
+// Container for displaying toast notifications
 export const ToastViewport = () => (
   <div className="fixed bottom-0 right-0 p-4 space-y-2" />
 );
@@ -37,7 +36,7 @@ export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
   ({ title, description, ...props }, ref) => (
     <div
       ref={ref}
-      className="p-4 bg-gray-900 text-white rounded-lg shadow-lg"
+      className="relative p-4 bg-gray-900 text-white rounded-lg shadow-lg"
       {...props}
     >
       {title && <h4>{title}</h4>}
@@ -54,6 +53,7 @@ export const ToastDescription = ({ children }: { children: React.ReactNode }) =>
   <p className="text-sm opacity-90">{children}</p>
 );
 
+// Simple close button (no behavior attached yet)
 export const ToastClose = () => (
   <button className="absolute top-2 right-2">&times;</button>
 );

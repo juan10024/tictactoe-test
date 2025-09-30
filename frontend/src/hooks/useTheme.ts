@@ -1,15 +1,17 @@
-// frontend/src/hooks/useTheme.ts
-/**
- * Theme store (Zustand)
- * - Manages 'light'/'dark' theme
- * - Persists selection in localStorage
- * - Applies 'dark' class to document.documentElement when needed
+/*
+ * file: useTheme.ts
+ * hook: useThemeStore
+ * description:
+ *     Zustand store for theme management.
+ *     - Manages "light" / "dark" themes
+ *     - Persists selection in localStorage
+ *     - Applies "dark" class to <html> element when needed
  *
- * Usage:
- *  import { useThemeStore } from '../hooks/useTheme'
- *  useThemeStore.getState().setTheme('dark')
- *  or inside components: const theme = useThemeStore(state => state.theme)
+ * usage:
+ *     import { useThemeStore } from '../hooks/useTheme'
+ *     const { theme, toggleTheme } = useThemeStore()
  */
+
 import { create } from 'zustand'
 
 type Theme = 'light' | 'dark'
@@ -20,21 +22,29 @@ interface ThemeState {
   toggleTheme: () => void
 }
 
-/** Helper: read initial theme from localStorage or OS preference */
+/**
+ * Helper: read initial theme from localStorage or OS preference
+ */
 const getInitialTheme = (): Theme => {
   try {
     const stored = localStorage.getItem('theme')
     if (stored === 'light' || stored === 'dark') return stored
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+
+    if (
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+    ) {
       return 'dark'
     }
   } catch {
-    // ignore (e.g. SSR or restricted env)
+    // ignore (e.g., SSR or restricted env)
   }
   return 'light'
 }
 
-/** Apply theme to document root */
+/**
+ * Helper: apply theme class to <html> element
+ */
 const applyThemeToDocument = (theme: Theme) => {
   try {
     const root = document.documentElement
@@ -48,9 +58,13 @@ const applyThemeToDocument = (theme: Theme) => {
   }
 }
 
+/**
+ * Zustand theme store
+ */
 export const useThemeStore = create<ThemeState>((set) => {
   const initial = typeof window !== 'undefined' ? getInitialTheme() : 'light'
-  // apply immediately (helps when used in top-level)
+
+  // Apply immediately (important for top-level rendering)
   if (typeof document !== 'undefined') applyThemeToDocument(initial)
 
   return {
@@ -59,7 +73,9 @@ export const useThemeStore = create<ThemeState>((set) => {
       set({ theme: t })
       try {
         localStorage.setItem('theme', t)
-      } catch {}
+      } catch {
+        // ignore storage errors
+      }
       applyThemeToDocument(t)
     },
     toggleTheme: () =>
@@ -67,7 +83,9 @@ export const useThemeStore = create<ThemeState>((set) => {
         const next = state.theme === 'dark' ? 'light' : 'dark'
         try {
           localStorage.setItem('theme', next)
-        } catch {}
+        } catch {
+          // ignore storage errors
+        }
         applyThemeToDocument(next)
         return { theme: next }
       }),

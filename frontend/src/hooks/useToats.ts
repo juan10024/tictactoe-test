@@ -1,22 +1,34 @@
-// frontend/src/components/ui/use-toast.ts
 /*
- * Minimalist useToast Hook (Functional)
+ * file: use-toast.ts
+ * hook: useToast
+ * description:
+ *     Minimalist custom hook for toast notifications.
+ *     - Provides an interface for triggering toasts
+ *     - Currently a mock implementation to avoid runtime errors
+ *     - Designed to be replaced with a real implementation later
  *
- * This hook provides the interface for triggering toasts from other components.
- * This is a boilerplate implementation to ensure the application compiles
- * without errors. It returns a mock structure.
+ * usage:
+ *     const { toast } = useToast()
+ *     toast({ title: 'Hello', description: 'World' })
  */
-import React from 'react';
 
-// Mock implementation
+import React from 'react'
+
+/**
+ * Mock hook for toast notifications.
+ * Replace with a real stateful implementation (e.g. Zustand or context).
+ */
 export function useToast() {
-  const [toasts] = React.useState<any[]>([]);
+  const [toasts] = React.useState<any[]>([])
 
-  // In a real app, this function would add a toast to the state.
+  /**
+   * Trigger a toast (mock).
+   * @param options - toast content (title, description, etc.)
+   */
   const toast = (options: any) => {
-    console.log('Toast triggered:', options);
-    // You would add logic here to display a toast.
-  };
+    console.log('Toast triggered:', options)
+    // TODO: Add logic to store and render the toast
+  }
 
-  return { toasts, toast };
+  return { toasts, toast }
 }

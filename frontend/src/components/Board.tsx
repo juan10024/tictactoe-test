@@ -1,4 +1,11 @@
-// frontend/src/components/Board.tsx
+/*
+ * file: Board.tsx
+ * component: Board
+ * description:
+ *     Renders the game board, handles player moves,
+ *     and highlights the winning line if present.
+ */
+
 import React, { memo } from 'react';
 import { useGameStore } from '../store/gameStore';
 import Cell from './Cell';
@@ -15,12 +22,10 @@ const Board = memo(({ playerName, isObserver = false }: BoardProps) => {
   const players = useGameStore((state) => state.players);
   const winningLine = useGameStore((state) => state.winningLine);
 
-  // Memoizar el estado del tablero para evitar re-renders innecesarios
   const boardState = React.useMemo(() => {
     return gameState?.board || '         ';
   }, [gameState?.board]);
 
-  // Memoizar mi símbolo para evitar cálculos repetidos
   const mySymbol = React.useMemo((): 'X' | 'O' | null => {
     if (isObserver || !playerName) return null;
     if (players.X?.name === playerName) return 'X';
@@ -50,7 +55,7 @@ const Board = memo(({ playerName, isObserver = false }: BoardProps) => {
         })}
         {winningLine && <WinningLine positions={winningLine} />}
       </div>
-      
+
       {isObserver && (
         <div className="mt-4 text-center text-yellow-600 font-semibold">
           You are observing this game

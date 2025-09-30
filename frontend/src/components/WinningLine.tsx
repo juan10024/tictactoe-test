@@ -1,7 +1,15 @@
-// frontend/src/components/WinningLine.tsx
+/*
+ * file: WinningLine.tsx
+ * component: WinningLine
+ * description:
+ *     Visual overlay component that draws a line across the winning cells on the board.
+ *     - Calculates coordinates based on board size
+ *     - Renders a gradient line with rotation and animation
+ */
 
 interface WinningLineProps {
   positions: number[];
+  /** Default is 3 for tic-tac-toe */
   boardSize?: number;
 }
 
@@ -16,7 +24,7 @@ const WinningLine = ({ positions, boardSize = 3 }: WinningLineProps) => {
     const col = position % boardSize;
     return {
       x: (col + 0.5) * cellSize,
-      y: (row + 0.5) * cellSize
+      y: (row + 0.5) * cellSize,
     };
   };
 
@@ -24,14 +32,16 @@ const WinningLine = ({ positions, boardSize = 3 }: WinningLineProps) => {
   const endCoord = getCoordinates(end);
 
   const length = Math.sqrt(
-    Math.pow(endCoord.x - startCoord.x, 2) + 
-    Math.pow(endCoord.y - startCoord.y, 2)
+    Math.pow(endCoord.x - startCoord.x, 2) +
+      Math.pow(endCoord.y - startCoord.y, 2)
   );
 
-  const angle = Math.atan2(endCoord.y - startCoord.y, endCoord.x - startCoord.x) * 180 / Math.PI;
+  const angle =
+    (Math.atan2(endCoord.y - startCoord.y, endCoord.x - startCoord.x) * 180) /
+    Math.PI;
 
   return (
-    <div 
+    <div
       className="absolute pointer-events-none"
       style={{
         width: '100%',
@@ -51,10 +61,10 @@ const WinningLine = ({ positions, boardSize = 3 }: WinningLineProps) => {
           transformOrigin: '0 0',
           zIndex: 10,
           boxShadow: '0 0 10px rgba(72, 187, 120, 0.8)',
-          animation: 'drawLine 1s ease-in-out forwards'
+          animation: 'drawLine 1s ease-in-out forwards',
         }}
       />
-      
+
       <style>{`
         @keyframes drawLine {
           0% {
