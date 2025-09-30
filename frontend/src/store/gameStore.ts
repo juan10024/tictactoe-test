@@ -1,75 +1,101 @@
-// frontend/src/store/gameStore.ts
-import { create } from 'zustand';
-import { z } from 'zod';
-import { WS_URL } from '../../config';
+/*
+ * file: gameStore.ts
+ * module: store
+ * description:
+ *    Zustand store to manage the Tic-Tac-Toe game state.
+ *    - Manages WebSocket connection lifecycle
+ *    - Stores and validates game state with Zod schemas
+ *    - Handles players, moves, errors, and modals
+ *    - Provides actions for game flow (connect, make move, reset, play again, etc.)
+ *    - Dispatches browser CustomEvents to integrate with UI modals and transitions
+ *
+ * usage:
+ *    import { useGameStore } from '../store/gameStore'
+ *
+ *    const { connect, makeMove, resetGame } = useGameStore()
+ *    connect("room123", "Alice")
+ *    makeMove(0)
+ *    resetGame()
+ */
 
-// Zod schema para un jugador
+import { create } from 'zustand'
+import { z } from 'zod'
+import { WS_URL } from '../../config'
+
+
+// Schemas
+
+// Player validation schema
 const PlayerSchema = z.object({
   id: z.number(),
   name: z.string(),
   wins: z.number(),
   draws: z.number(),
   losses: z.number(),
-});
+})
 
-// Zod schema para validar el estado del juego recibido
+// Game state validation schema
 const GameStateSchema = z.object({
   ID: z.number(),
-  roomID: z.string(),  
-  board: z.string().length(9),                                   
-  currentTurn: z.enum(['X', 'O']), 
-  status: z.enum(['waiting', 'in_progress', 'finished']), 
-  winnerID: z.number().nullable(), 
+  roomID: z.string(),
+  board: z.string().length(9), 
+  currentTurn: z.enum(['X', 'O']),
+  status: z.enum(['waiting', 'in_progress', 'finished']),
+  winnerID: z.number().nullable(),
   playerXID: z.number().nullable(),
-  playerOID: z.number().nullable(), 
-  playerX: PlayerSchema.optional(), 
-  playerO: PlayerSchema.optional(), 
-});
+  playerOID: z.number().nullable(),
+  playerX: PlayerSchema.optional(),
+  playerO: PlayerSchema.optional(),
+})
 
-export type GameState = z.infer<typeof GameStateSchema>;
-export type Player = z.infer<typeof PlayerSchema> & { symbol: 'X' | 'O' };
+// Types inferred from schemas
+export type GameState = z.infer<typeof GameStateSchema>
+export type Player = z.infer<typeof PlayerSchema> & { symbol: 'X' | 'O' }
 
-// Estado del store
+
+// Store State and Actions
+
 interface GameStoreState {
-  socket: WebSocket | null;
-  isConnected: boolean;
-  gameState: GameState | null;
-  players: { X: Player | null; O: Player | null };
-  error: string | null;
-  winningLine: number[] | null;
-  isGameOver: boolean;
-  isObserver: boolean;
-  showConfirmationModal: boolean;
-  confirmationOpponent: string | null;
-  showEndGameModal: boolean;
-  showPlayAgainConfirmation: boolean;
-  playAgainRequestingPlayer: string | null;
-  isReturningPlayer: boolean;
-  isValidationComplete: boolean;
-  playerName?: string;
+  socket: WebSocket | null
+  isConnected: boolean
+  gameState: GameState | null
+  players: { X: Player | null; O: Player | null }
+  error: string | null
+  winningLine: number[] | null
+  isGameOver: boolean
+  isObserver: boolean
+  showConfirmationModal: boolean
+  confirmationOpponent: string | null
+  showEndGameModal: boolean
+  showPlayAgainConfirmation: boolean
+  playAgainRequestingPlayer: string | null
+  isReturningPlayer: boolean
+  isValidationComplete: boolean
+  playerName?: string
 }
 
-// Acciones del store
 interface GameStoreActions {
-  connect: (roomId: string, playerName: string) => void;
-  disconnect: () => void;
-  makeMove: (position: number) => void;
-  resetGame: () => void;
-  resetError: () => void;
-  respondToPlayAgain: (accepted: boolean) => void;
-  confirmGameStart: (confirm: boolean) => void;
-  showCustomError: (message: string) => void;
-  setShowEndGameModal: (show: boolean) => void;
-  setShowPlayAgainConfirmation: (show: boolean) => void;
-  setPlayAgainRequest: (playerName: string) => void;
-  clearPlayAgainRequest: () => void;
-  setIsReturningPlayer: (isReturning: boolean) => void;
+  connect: (roomId: string, playerName: string) => void
+  disconnect: () => void
+  makeMove: (position: number) => void
+  resetGame: () => void
+  resetError: () => void
+  respondToPlayAgain: (accepted: boolean) => void
+  confirmGameStart: (confirm: boolean) => void
+  showCustomError: (message: string) => void
+  setShowEndGameModal: (show: boolean) => void
+  setShowPlayAgainConfirmation: (show: boolean) => void
+  setPlayAgainRequest: (playerName: string) => void
+  clearPlayAgainRequest: () => void
+  setIsReturningPlayer: (isReturning: boolean) => void
 }
 
-type GameStore = GameStoreState & GameStoreActions;
+type GameStore = GameStoreState & GameStoreActions
+
+// Zustand Store
 
 export const useGameStore = create<GameStore>((set, get) => ({
-  // Estado inicial
+  // Initial state
   socket: null,
   isConnected: false,
   gameState: null,
@@ -86,21 +112,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isReturningPlayer: false,
   isValidationComplete: false,
 
-  // Nueva acción para mostrar un error personalizado
+  // Actions
+
+  /** Show a custom error in a blocking alert */
   showCustomError: (message: string) => {
-    alert(message);
+    alert(message)
   },
 
-  // Conexión WebSocket
+  /** Connect to game WebSocket and setup listeners */
   connect: (roomId: string, playerName: string) => {
-    set({ playerName });
-    const currentSocket = get().socket;
+    set({ playerName })
+    const currentSocket = get().socket
     if (currentSocket) {
-      currentSocket.close(1000, "Reconnecting with new session");
+      currentSocket.close(1000, 'Reconnecting with new session')
     }
 
-    const wsUrl = `${WS_URL}/join/${roomId}?playerName=${encodeURIComponent(playerName)}`;
-    const ws = new WebSocket(wsUrl);
+    const wsUrl = `${WS_URL}/join/${roomId}?playerName=${encodeURIComponent(playerName)}`
+    const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
       set({
@@ -113,123 +141,132 @@ export const useGameStore = create<GameStore>((set, get) => ({
         showConfirmationModal: false,
         showEndGameModal: false,
         showPlayAgainConfirmation: false,
-        playAgainRequestingPlayer: null
-      });
-    };
+        playAgainRequestingPlayer: null,
+      })
+    }
 
+    // Handle server messages
     ws.onmessage = (event) => {
       try {
-        const message = JSON.parse(event.data);
+        const message = JSON.parse(event.data)
 
         switch (message.type) {
-
           case 'gameStateUpdate': {
-            const parsedState = GameStateSchema.parse(message.gameState);
-            const currentPlayerName = get().playerName;
+            const parsedState = GameStateSchema.parse(message.gameState)
+            const currentPlayerName = get().playerName
 
-           
             const playerX = message.players?.X
-              ? { ...message.players.X, symbol: 'X' } as Player
-              : null;
+              ? ({ ...message.players.X, symbol: 'X' } as Player)
+              : null
             const playerO = message.players?.O
-              ? { ...message.players.O, symbol: 'O' } as Player
-              : null;
+              ? ({ ...message.players.O, symbol: 'O' } as Player)
+              : null
 
-           
             const isObserver = !(
-              (playerX?.name === currentPlayerName) ||
-              (playerO?.name === currentPlayerName)
-            );
+              playerX?.name === currentPlayerName ||
+              playerO?.name === currentPlayerName
+            )
 
-            const isReturning = !!(playerX?.wins || playerX?.losses || playerX?.draws ||
-              playerO?.wins || playerO?.losses || playerO?.draws);
+            const isReturning =
+              !!(playerX?.wins ||
+              playerX?.losses ||
+              playerX?.draws ||
+              playerO?.wins ||
+              playerO?.losses ||
+              playerO?.draws)
 
-            let winningLine = null;
-            if (parsedState.status === 'finished' && parsedState.winnerID) { 
-              winningLine = calculateWinningLine(parsedState.board); 
+            let winningLine = null
+            if (parsedState.status === 'finished' && parsedState.winnerID) {
+              winningLine = calculateWinningLine(parsedState.board)
             }
 
             set({
               gameState: parsedState,
               players: { X: playerX, O: playerO },
               winningLine,
-              isGameOver: parsedState.status === 'finished', 
+              isGameOver: parsedState.status === 'finished',
               isObserver,
-              isReturningPlayer: isReturning
-            });
+              isReturningPlayer: isReturning,
+            })
 
-            if (parsedState.status === 'finished') { 
-              setTimeout(() => set({ showEndGameModal: true }), 500);
+            if (parsedState.status === 'finished') {
+              setTimeout(() => set({ showEndGameModal: true }), 500)
             }
-            break;
+            break
           }
 
           case 'gameStartConfirmation': {
             set({
               showConfirmationModal: true,
-              confirmationOpponent: message.opponentName
-            });
-            break;
+              confirmationOpponent: message.opponentName,
+            })
+            break
           }
 
           case 'playAgainRequest': {
-            const { playerName: currentPlayerName } = get();
+            const { playerName: currentPlayerName } = get()
             if (message.requestingPlayer !== currentPlayerName) {
               set({
                 showPlayAgainConfirmation: true,
-                playAgainRequestingPlayer: message.requestingPlayer
-              });
-              showWaitingModal(message.requestingPlayer, currentPlayerName || '');
+                playAgainRequestingPlayer: message.requestingPlayer,
+              })
+              showWaitingModal(
+                message.requestingPlayer,
+                currentPlayerName || ''
+              )
             }
-            break;
+            break
           }
 
-          case 'play_again_waiting': {
-            break;
-          }
+          case 'play_again_waiting':
+            break
 
           case 'play_again_accepted': {
-            const event = new CustomEvent('playAgainAccepted');
-            window.dispatchEvent(event);
-            handlePlayAgainAccept();
-            break;
+            const event = new CustomEvent('playAgainAccepted')
+            window.dispatchEvent(event)
+            handlePlayAgainAccept()
+            break
           }
 
           case 'play_again_rejected': {
             const event = new CustomEvent('playAgainRejected', {
-              detail: { rejectedBy: message.rejectedBy }
-            });
-            window.dispatchEvent(event);
-            handlePlayAgainReject(message.rejectedBy);
-            break;
+              detail: { rejectedBy: message.rejectedBy },
+            })
+            window.dispatchEvent(event)
+            handlePlayAgainReject(message.rejectedBy)
+            break
           }
 
           case 'error': {
-            if (message.message && message.message.includes('already exists in the room')) {
-              get().showCustomError(message.message);
-              get().disconnect();
+            if (
+              message.message &&
+              message.message.includes('already exists in the room')
+            ) {
+              get().showCustomError(message.message)
+              get().disconnect()
             } else {
-              set({ error: message.message || 'An error occurred' });
+              set({ error: message.message || 'An error occurred' })
             }
-            break;
+            break
           }
 
           default:
-            console.warn('Unknown message type from server:', message);
+            console.warn('Unknown message type from server:', message)
         }
       } catch (e) {
-        console.error('Error parsing WS message:', e);
-        set({ error: 'Received invalid data from server.' });
+        console.error('Error parsing WS message:', e)
+        set({ error: 'Received invalid data from server.' })
       }
-    };
+    }
 
     ws.onerror = () => {
-
-      set({ error: 'WebSocket connection error.' });
-    };
+      set({ error: 'WebSocket connection error.' })
+    }
 
     ws.onclose = (event) =>
-      console.log('WebSocket closed:', event.code, event.reason);
+      console.log('WebSocket closed:', event.code, event.reason)
+
+    // Reset store state on disconnect
     set({
       isConnected: false,
       socket: null,
@@ -243,48 +280,59 @@ export const useGameStore = create<GameStore>((set, get) => ({
       showEndGameModal: false,
       showPlayAgainConfirmation: false,
       playAgainRequestingPlayer: null,
-    });
+    })
   },
 
+  /** Respond to play again request */
   respondToPlayAgain: (accepted: boolean) => {
-    const { socket } = get();
+    const { socket } = get()
     if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({
-        type: 'play_again_response',
-        payload: { accepted }
-      }));
+      socket.send(
+        JSON.stringify({
+          type: 'play_again_response',
+          payload: { accepted },
+        })
+      )
     }
   },
 
+  /** Send a move to the server */
   makeMove: (position: number) => {
-    const { socket, gameState, isObserver } = get();
+    const { socket, gameState, isObserver } = get()
     if (isObserver) {
-      console.log('Observers cannot make moves');
-      return;
+      console.log('Observers cannot make moves')
+      return
     }
 
-    if (socket && socket.readyState === WebSocket.OPEN && gameState?.status === 'in_progress') {
-      socket.send(JSON.stringify({ type: 'move', payload: { position } }));
+    if (
+      socket &&
+      socket.readyState === WebSocket.OPEN &&
+      gameState?.status === 'in_progress'
+    ) {
+      socket.send(JSON.stringify({ type: 'move', payload: { position } }))
     }
   },
 
+  /** Confirm or reject game start */
   confirmGameStart: (confirm: boolean) => {
-    const { socket, showConfirmationModal } = get();
+    const { socket, showConfirmationModal } = get()
     if (showConfirmationModal && socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({
-        type: 'confirmGameStart',
-        payload: { confirmed: confirm }
-      }));
+      socket.send(
+        JSON.stringify({
+          type: 'confirmGameStart',
+          payload: { confirmed: confirm },
+        })
+      )
 
-      set({ showConfirmationModal: false, confirmationOpponent: null });
+      set({ showConfirmationModal: false, confirmationOpponent: null })
     }
   },
 
+  /** Reset game state locally and notify server */
   resetGame: () => {
-    const { socket, gameState, isObserver } = get();
-    if (isObserver) return;
+    const { socket, gameState, isObserver } = get()
+    if (isObserver) return
 
-    // Actualizar estado local inmediatamente
     if (gameState) {
       const resetGameState = {
         ...gameState,
@@ -292,8 +340,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         status: 'in_progress' as const,
         CurrentTurn: 'X' as const,
         winnerID: null,
-        winningLine: null
-      };
+        winningLine: null,
+      }
 
       set({
         gameState: resetGameState,
@@ -301,19 +349,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isGameOver: false,
         showEndGameModal: false,
         showPlayAgainConfirmation: false,
-        playAgainRequestingPlayer: null
-      });
+        playAgainRequestingPlayer: null,
+      })
     }
 
     if (socket && socket.readyState === WebSocket.OPEN && gameState) {
-      socket.send(JSON.stringify({ type: 'reset' }));
+      socket.send(JSON.stringify({ type: 'reset' }))
     }
   },
 
+  /** Disconnect from WebSocket and reset state */
   disconnect: () => {
-    const socket = get().socket;
+    const socket = get().socket
     if (socket) {
-      socket.close(1000, "User disconnected");
+      socket.close(1000, 'User disconnected')
     }
     set({
       isConnected: false,
@@ -328,83 +377,100 @@ export const useGameStore = create<GameStore>((set, get) => ({
       showEndGameModal: false,
       showPlayAgainConfirmation: false,
       playAgainRequestingPlayer: null,
-    });
+    })
   },
 
+  /** Reset error state */
   resetError: () => set({ error: null }),
 
-  // Nuevas acciones para modales
+  /** Modal state setters */
   setShowEndGameModal: (show) => set({ showEndGameModal: show }),
-  setShowPlayAgainConfirmation: (show) => set({ showPlayAgainConfirmation: show }),
+  setShowPlayAgainConfirmation: (show) =>
+    set({ showPlayAgainConfirmation: show }),
 
+  /** Initiate play again request */
   setPlayAgainRequest: (playerName) => {
-    const { socket, setShowEndGameModal } = get();
+    const { socket, setShowEndGameModal } = get()
     if (socket && socket.readyState === WebSocket.OPEN) {
-
-
-      const messageType = 'playAgainRequest';
-
-      setShowEndGameModal(false);
-      socket.send(JSON.stringify({
-        type: messageType,
-        payload: { requestingPlayer: playerName }
-      }));
+      setShowEndGameModal(false)
+      socket.send(
+        JSON.stringify({
+          type: 'playAgainRequest',
+          payload: { requestingPlayer: playerName },
+        })
+      )
     }
   },
 
-  clearPlayAgainRequest: () => set({
-    showPlayAgainConfirmation: false,
-    playAgainRequestingPlayer: null
-  }),
+  /** Clear play again request state */
+  clearPlayAgainRequest: () =>
+    set({
+      showPlayAgainConfirmation: false,
+      playAgainRequestingPlayer: null,
+    }),
 
-  setIsReturningPlayer: (isReturning) => set({ isReturningPlayer: isReturning }),
-}));
+  /** Mark whether current player is a returning player */
+  setIsReturningPlayer: (isReturning) =>
+    set({ isReturningPlayer: isReturning }),
+}))
 
-// Función para calcular la línea ganadora
+
+// Helper functions
+
+/** Calculate winning line indices from board string */
 function calculateWinningLine(board: string): number[] | null {
   const winConditions = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8],
-    [0, 3, 6], [1, 4, 7], [2, 5, 8],
-    [0, 4, 8], [2, 4, 6]
-  ];
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+  ]
 
   for (const condition of winConditions) {
-    const [a, b, c] = condition;
+    const [a, b, c] = condition
     if (board[a] !== ' ' && board[a] === board[b] && board[a] === board[c]) {
-      return condition;
+      return condition
     }
   }
-  return null;
+  return null
 }
 
+/** Dispatch browser event to show waiting modal */
 export const showWaitingModal = (requestingPlayer: string, opponentName: string) => {
   const event = new CustomEvent('showWaitingModal', {
-    detail: { requestingPlayer, opponentName }
-  });
-  window.dispatchEvent(event);
-};
+    detail: { requestingPlayer, opponentName },
+  })
+  window.dispatchEvent(event)
+}
 
+/** Dispatch browser event to show rejection message */
 export const showRejectionMessage = (rejectedBy: string) => {
   const event = new CustomEvent('showRejectionMessage', {
-    detail: { rejectedBy }
-  });
-  window.dispatchEvent(event);
-};
+    detail: { rejectedBy },
+  })
+  window.dispatchEvent(event)
+}
 
+/** Handle accepted play again flow */
 export const handlePlayAgainAccept = () => {
-  const { resetGame } = useGameStore.getState();
-  resetGame();
+  const { resetGame } = useGameStore.getState()
+  resetGame()
 
-  const event = new CustomEvent('showGameboard');
-  window.dispatchEvent(event);
-};
+  const event = new CustomEvent('showGameboard')
+  window.dispatchEvent(event)
+}
 
+/** Handle rejected play again flow */
 export const handlePlayAgainReject = (rejectedBy: string) => {
-  const { clearPlayAgainRequest } = useGameStore.getState();
-  clearPlayAgainRequest();
+  const { clearPlayAgainRequest } = useGameStore.getState()
+  clearPlayAgainRequest()
 
-  showRejectionMessage(rejectedBy);
+  showRejectionMessage(rejectedBy)
 
-  const event = new CustomEvent('showGameMenu');
-  window.dispatchEvent(event);
-};
+  const event = new CustomEvent('showGameMenu')
+  window.dispatchEvent(event)
+}

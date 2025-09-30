@@ -108,11 +108,16 @@ Este proyecto es una implementación full-stack de un jeugo **Tic-Tac-Toe** con 
 
 │   │   ├── store/         # Zustand: gameStore.ts
 
+│   │   ├── hooks/         # Hooks
+
+│   │   ├── utils/         # Constantes de Asignación
+
 │   │   ├── services/      # Llamadas a API y WebSockets
 
 │   │   └── config.ts      # URLs y constantes
 
 ├── docker-compose.yml     # Servicios: frontend, backend, postgres
+
 └── README.md
 
 5. **Endpoints**

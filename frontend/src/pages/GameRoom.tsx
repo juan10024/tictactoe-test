@@ -1,182 +1,210 @@
-// frontend/src/pages/GameRoom.tsx
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useGameStore } from '../store/gameStore';
-import GameRoomMenuView from '../components/game/GameRoomMenuView';
-import GameRoomGameView from '../components/game/GameRoomGameView';
-import ConfirmationModals from '../components/modals/ConfirmationModal';
-import EndGameModal from '../components/modals/EndGameModal';
-import PlayAgainConfirmationModal from '../components/modals/PlayAgainConfirmationModal';
-import ObserverExitModal from '../components/modals/ObserverExitModal';
+/*
+ * file: GameRoom.tsx
+ * page: GameRoom
+ * description:
+ *    Main page for a game room (players + observers).
+ *    - Connects/disconnects users to a room via gameStore
+ *    - Manages game menu vs. in-game board views
+ *    - Controls multiple modals (welcome, leave, endgame, play again, observer exit)
+ *    - Handles observers joining mid-game and game continuation logic
+ *
+ * usage:
+ *    Route definition:
+ *       <Route path="/room/:roomId" element={<GameRoom />} />
+ */
+
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useGameStore } from '../store/gameStore'
+
+// Views
+import GameRoomMenuView from '../components/game/GameRoomMenuView'
+import GameRoomGameView from '../components/game/GameRoomGameView'
+
+// Modals
+import ConfirmationModals from '../components/modals/ConfirmationModal'
+import EndGameModal from '../components/modals/EndGameModal'
+import PlayAgainConfirmationModal from '../components/modals/PlayAgainConfirmationModal'
+import ObserverExitModal from '../components/modals/ObserverExitModal'
+
+
+// Main Page Component
 
 const GameRoom = () => {
-  const { roomId } = useParams<{ roomId: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { roomId } = useParams<{ roomId: string }>()
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  const connect = useGameStore((state) => state.connect);
-  const disconnect = useGameStore((state) => state.disconnect);
-  const gameState = useGameStore((state) => state.gameState);
-  const showEndGameModal = useGameStore((state) => state.showEndGameModal);
-  const showPlayAgainConfirmation = useGameStore((state) => state.showPlayAgainConfirmation);
+  // Store actions + selectors
+  const connect = useGameStore((state) => state.connect)
+  const disconnect = useGameStore((state) => state.disconnect)
+  const gameState = useGameStore((state) => state.gameState)
+  const showEndGameModal = useGameStore((state) => state.showEndGameModal)
+  const showPlayAgainConfirmation = useGameStore(
+    (state) => state.showPlayAgainConfirmation
+  )
 
-  const [welcomeModalShown, setWelcomeModalShown] = useState(false);
-  const isObserverFromStore = useGameStore.getState().isObserver;
-  const [showMenu, setShowMenu] = useState(!isObserverFromStore);
-  const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const [showLeaveGameModal, setShowLeaveGameModal] = useState(false);
-  const [showObserverExitModal, setShowObserverExitModal] = useState(false);
+  // Local UI states
+  const [welcomeModalShown, setWelcomeModalShown] = useState(false)
+  const isObserverFromStore = useGameStore.getState().isObserver
+  const [showMenu, setShowMenu] = useState(!isObserverFromStore)
+  const [showLeaveModal, setShowLeaveModal] = useState(false)
+  const [showLeaveGameModal, setShowLeaveGameModal] = useState(false)
+  const [showObserverExitModal, setShowObserverExitModal] = useState(false)
 
-  const playerName = new URLSearchParams(location.search).get('playerName') || '';
+  const playerName =
+    new URLSearchParams(location.search).get('playerName') || ''
 
+ 
+  // Lifecycle Effects
+  
+
+  /** Connect/disconnect to room */
   useEffect(() => {
     if (!roomId || !playerName) {
-      navigate('/');
-      return;
+      navigate('/')
+      return
     }
-
-    connect(roomId, playerName);
-
+    connect(roomId, playerName)
     return () => {
-      const currentPath = window.location.pathname;
+      const currentPath = window.location.pathname
       if (!currentPath.includes('/stats')) {
-        disconnect();
+        disconnect()
       }
-    };
-  }, [roomId, connect, disconnect, navigate, location, playerName]);
-
-  useEffect(() => {
-    const handleShowGameMenu = () => {
-      setShowMenu(true);
-    };
-
-    window.addEventListener('showGameMenu', handleShowGameMenu);
-    return () => window.removeEventListener('showGameMenu', handleShowGameMenu);
-  }, []);
-
-  useEffect(() => {
-    const handleShowGameBoard = () => {
-      setShowMenu(false);
-    };
-
-    window.addEventListener('showGameBoard', handleShowGameBoard);
-    return () => window.removeEventListener('showGameBoard', handleShowGameBoard);
-  }, []);
-
-  useEffect(() => {
-    const currentGameState = useGameStore.getState().gameState;
-    if (showMenu && currentGameState?.status === 'in_progress') {
-      setShowMenu(false);
     }
-  }, [showMenu]);
+  }, [roomId, connect, disconnect, navigate, location, playerName])
 
-  // Mostrar modal de bienvenida después de la conexión
+  /** Event listener: show menu */
   useEffect(() => {
-    const isConnected = useGameStore.getState().isConnected;
+    const handleShowGameMenu = () => setShowMenu(true)
+    window.addEventListener('showGameMenu', handleShowGameMenu)
+    return () => window.removeEventListener('showGameMenu', handleShowGameMenu)
+  }, [])
+
+  /** Event listener: show game board */
+  useEffect(() => {
+    const handleShowGameBoard = () => setShowMenu(false)
+    window.addEventListener('showGameBoard', handleShowGameBoard)
+    return () =>
+      window.removeEventListener('showGameBoard', handleShowGameBoard)
+  }, [])
+
+  /** Auto-switch to board if game already started */
+  useEffect(() => {
+    const currentGameState = useGameStore.getState().gameState
+    if (showMenu && currentGameState?.status === 'in_progress') {
+      setShowMenu(false)
+    }
+  }, [showMenu])
+
+  /** Welcome modal (once per session) */
+  useEffect(() => {
+    const isConnected = useGameStore.getState().isConnected
     if (isConnected && !welcomeModalShown) {
       if (!sessionStorage.getItem('welcomeModalShown')) {
         const timer = setTimeout(() => {
-          setWelcomeModalShown(true);
-          sessionStorage.setItem('welcomeModalShown', 'true');
-        }, 100);
-        return () => clearTimeout(timer);
+          setWelcomeModalShown(true)
+          sessionStorage.setItem('welcomeModalShown', 'true')
+        }, 100)
+        return () => clearTimeout(timer)
       }
     }
-  }, [welcomeModalShown]);
+  }, [welcomeModalShown])
 
+  /** Observers skip menu or go to board if game is in progress */
   useEffect(() => {
-    const { isObserver, gameState } = useGameStore.getState();
+    const { isObserver, gameState } = useGameStore.getState()
     if (isObserver) {
-      // Observadores van directo al tablero
-      setShowMenu(false);
+      setShowMenu(false)
     } else if (gameState?.status === 'in_progress') {
-      // Jugadores activos entran al juego si ya está en progreso
-      setShowMenu(false);
+      setShowMenu(false)
     }
-  }, []);
+  }, [])
 
-  // Nuevo useEffect para observadores
+  /** Observer exit modal when game finishes */
   useEffect(() => {
     const unsubscribe = useGameStore.subscribe((state) => {
       if (state.isObserver && state.gameState?.status === 'finished') {
-        // Solo mostrar si no hay solicitud de "jugar de nuevo" en curso
         if (!state.showPlayAgainConfirmation && !state.playAgainRequestingPlayer) {
           const timer = setTimeout(() => {
-            setShowObserverExitModal(true);
-          }, 1000);
-          return () => clearTimeout(timer);
+            setShowObserverExitModal(true)
+          }, 1000)
+          return () => clearTimeout(timer)
         }
       } else {
-        setShowObserverExitModal(false);
+        setShowObserverExitModal(false)
       }
-    });
+    })
+    return () => unsubscribe()
+  }, [])
 
-    return () => unsubscribe();
-  }, []);
 
+  // Event Handlers
+ 
   const handleCopyRoomId = useCallback(() => {
     if (roomId) {
       navigator.clipboard
         .writeText(roomId)
         .then(() => alert('Room ID copied!'))
-        .catch((err) => console.error('Failed to copy ID: ', err));
+        .catch((err) => console.error('Failed to copy ID: ', err))
     }
-  }, [roomId]);
+  }, [roomId])
 
   const handleLeaveRoom = useCallback(() => {
-    disconnect();
-    navigate('/');
-  }, [disconnect, navigate]);
+    disconnect()
+    navigate('/')
+  }, [disconnect, navigate])
 
   const handlePlayGame = () => {
-    const gameState = useGameStore.getState().gameState;
-    const playerName = new URLSearchParams(location.search).get('playerName') || '';
-
-    // Si el juego está terminado, enviar solicitud desde el menú
+    const gameState = useGameStore.getState().gameState
+    const playerName =
+      new URLSearchParams(location.search).get('playerName') || ''
     if (gameState?.status === 'finished') {
-      useGameStore.getState().setPlayAgainRequest(playerName);
+      useGameStore.getState().setPlayAgainRequest(playerName)
     }
-
-    setTimeout(() => {
-      setShowMenu(false);
-    }, 50);
-  };
+    setTimeout(() => setShowMenu(false), 50)
+  }
 
   const handleViewStats = useCallback(() => {
-    navigate(`/room/${roomId}/stats?playerName=${encodeURIComponent(playerName)}`);
-  }, [roomId, navigate, playerName]);
+    navigate(
+      `/room/${roomId}/stats?playerName=${encodeURIComponent(playerName)}`
+    )
+  }, [roomId, navigate, playerName])
 
   const handleCloseWelcomeModal = useCallback(() => {
-    setWelcomeModalShown(false);
-    sessionStorage.setItem('welcomeModalShown', 'true');
-  }, []);
+    setWelcomeModalShown(false)
+    sessionStorage.setItem('welcomeModalShown', 'true')
+  }, [])
 
   const handleConfirmLeaveGame = useCallback(() => {
-    setShowLeaveGameModal(false);
-    setShowMenu(true);
-  }, []);
+    setShowLeaveGameModal(false)
+    setShowMenu(true)
+  }, [])
 
   const handleCancelLeaveGame = useCallback(() => {
-    setShowLeaveGameModal(false);
-  }, []);
+    setShowLeaveGameModal(false)
+  }, [])
 
   const handleObserverStay = useCallback(() => {
-    setShowObserverExitModal(false);
-  }, []);
+    setShowObserverExitModal(false)
+  }, [])
 
   const handleObserverLeave = useCallback(() => {
-    disconnect();
-    navigate('/');
-  }, [disconnect, navigate]);
+    disconnect()
+    navigate('/')
+  }, [disconnect, navigate])
 
-  // Determinar si mostrar "Play Game" o "Continue Game"
+
+  // Derived State
+
   const shouldShowContinueButton = useMemo(() => {
-    return !!(gameState &&
-      gameState.status === 'in_progress' &&
-      showMenu);
-  }, [gameState, showMenu]);
+    return !!(gameState && gameState.status === 'in_progress' && showMenu)
+  }, [gameState, showMenu])
 
-  const isObserver = useGameStore((state) => state.isObserver);
+  const isObserver = useGameStore((state) => state.isObserver)
+
+ 
+  // Render
 
   if (showMenu) {
     return (
@@ -200,7 +228,6 @@ const GameRoom = () => {
           onLeaveGameModalClose={handleCancelLeaveGame}
           onConfirmLeaveGame={handleConfirmLeaveGame}
         />
-
         {showPlayAgainConfirmation && <PlayAgainConfirmationModal />}
         {showObserverExitModal && (
           <ObserverExitModal
@@ -209,9 +236,8 @@ const GameRoom = () => {
             onLeave={handleObserverLeave}
           />
         )}
-
       </>
-    );
+    )
   }
 
   return (
@@ -231,8 +257,6 @@ const GameRoom = () => {
         onLeaveGameModalClose={handleCancelLeaveGame}
         onConfirmLeaveGame={handleConfirmLeaveGame}
       />
-
-
       {showEndGameModal && <EndGameModal playerName={playerName} />}
       {showPlayAgainConfirmation && <PlayAgainConfirmationModal />}
       {showObserverExitModal && (
@@ -243,7 +267,7 @@ const GameRoom = () => {
         />
       )}
     </>
-  );
-};
+  )
+}
 
-export default GameRoom;
+export default GameRoom
