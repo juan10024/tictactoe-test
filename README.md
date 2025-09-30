@@ -1,4 +1,4 @@
-# Tic-Tac-Toe Multijugador — Prueba Técnica
+# Tic-Tac-Toe Multijugador — Technical Test
 
 Este proyecto es una implementación full-stack de un jeugo **Tic-Tac-Toe** con funcionalidad multijugador en tiempo real, gestión de salas, historial de partidas y panel de estadísticas. Fue desarrollado como parte de una prueba técnica para evaluar habilidades en arquitectura full-stack, comunicación en tiempo real, persistencia de datos y experiencia de usuario.
 <img width="1292" height="715" alt="image" src="https://github.com/user-attachments/assets/b00f92ac-8fec-4141-905f-4573acfae768" />
@@ -59,5 +59,51 @@ Este proyecto es una implementación full-stack de un jeugo **Tic-Tac-Toe** con 
 
 1. **Clonar el repositorio**
    ```bash
-   git clone <tu-repo-url>
+   git clone https://github.com/juan10024/tictactoe-test.git
    cd tictactoe-project
+  
+2. **Construir e iniciar los servicios**
+  ```bash
+  docker-compose up --build
+  ```
+
+3. **Acceder a la aplicación**
+  - Frontend: http://localhost:5173
+  - Backend:  http://localhost:8080
+  - Base de datos: PostgreSQL en localhost:5432 :
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=po2tgre2
+      - POSTGRES_DB=tictactoeDB
+        
+4. **📂 Estructura del proyecto**
+
+  tictactoe-project/
+├── backend/               # Aplicación Go
+│   ├── main.go            # Punto de entrada
+│   ├── internal/          # Lógica de negocio (Clean Architecture)
+│   │   ├── core/          # Dominio y puertos
+│   │   │   └── domain/    
+│   │   │   └── ports/    
+│   │   │   └── services/  # Implementaciones (WebSockets, juego, stats)
+│   │   └── infra/         # Repositorio 
+│   │   └── adapters/      # Handlers HTTP
+│   │   │   └── db/    
+│   │   │   └── dto/    
+│   │   │   └── handlers/  # Administración de Peticiones
+│   └── migrations/        # Esquema inicial de BD
+├── frontend/              # Aplicación React + TS
+│   ├── src/
+│   │   ├── components/    # Componentes reutilizables
+│   │   ├── pages/         # Vistas principales
+│   │   ├── store/         # Zustand: gameStore.ts
+│   │   ├── services/      # Llamadas a API y WebSockets
+│   │   └── config.ts      # URLs y constantes
+├── docker-compose.yml     # Servicios: frontend, backend, postgres
+└── README.md
+
+5. **Endpoints**
+  - Unirse a una sala WebSocket: ws://localhost:8080/join/{roomId}?playerName=...
+  - Historial de sala: GET /api/rooms/history/{roomId}
+  - Ranking global: GET /api/stats/ranking
+  - Estadísticas generales: GET /api/stats/general
+  - Estadísticas de jugador: GET /api/stats/player?playerName=...
