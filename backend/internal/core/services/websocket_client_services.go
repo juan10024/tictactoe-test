@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/juan10024/tictactoe-test/internal/core/domain"
 )
 
 // Client represents a single connected WebSocket client.
@@ -100,18 +101,33 @@ func (c *Client) readPump(gs *GameService) {
 				if c.isObserver {
 					continue
 				}
-				game, err := gs.repo.GetByRoomID(c.room)
-				if err == nil && game != nil {
-					game.Board = "         "
-					game.Status = "in_progress"
-					game.CurrentTurn = "X"
-					game.WinnerID = nil
 
-					if err := gs.repo.Update(game); err != nil {
-						log.Printf("ERROR: Could not reset game in room %s: %v", c.room, err)
-					} else {
-						broadcastGameState(c.hub, gs, c.room)
-					}
+				// Obtener todos los juegos terminados en la sala, ordenados por created_at DESC
+				finishedGames, err := gs.repo.GetFinishedGamesByRoomID(c.room)
+				if err != nil || len(finishedGames) == 0 {
+					log.Printf("WARN: Cannot reset game in room %s: no finished games found", c.room)
+					continue
+				}
+
+				// Usar el último juego terminado como plantilla
+				latest := finishedGames[0]
+
+				newGame := &domain.Game{
+					RoomID:      latest.RoomID,
+					PlayerXID:   latest.PlayerXID,
+					PlayerX:     latest.PlayerX,
+					PlayerOID:   latest.PlayerOID,
+					PlayerO:     latest.PlayerO,
+					Status:      "in_progress",
+					Board:       "         ",
+					CurrentTurn: "X",
+					WinnerID:    nil,
+				}
+
+				if err := gs.repo.Create(newGame); err != nil {
+					log.Printf("ERROR: Failed to create new game in room %s: %v", c.room, err)
+				} else {
+					broadcastGameState(c.hub, gs, c.room)
 				}
 
 			case "confirmGameStart":

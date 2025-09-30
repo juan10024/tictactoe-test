@@ -93,7 +93,10 @@ func (r *GormGameRepository) Update(game *domain.Game) error {
  */
 func (r *GormGameRepository) GetByRoomID(roomID string) (*domain.Game, error) {
 	var game domain.Game
-	err := r.db.Preload("PlayerX").Preload("PlayerO").Where("room_id = ?", roomID).First(&game).Error
+	err := r.db.Preload("PlayerX").Preload("PlayerO").
+		Where("room_id = ?", roomID).
+		Order("created_at DESC").
+		First(&game).Error
 	return &game, err
 }
 
