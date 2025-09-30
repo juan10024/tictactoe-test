@@ -13,11 +13,11 @@ import "github.com/juan10024/tictactoe-test/internal/core/domain"
 /* GameRepository defines the contract for game data persistence.
  * Any data storage solution must implement this interface to be used by the core service.
  */
-
 type GameRepository interface {
 	Create(game *domain.Game) error
 	Update(game *domain.Game) error
 	GetByRoomID(roomID string) (*domain.Game, error)
+	GetFinishedGamesByRoomID(roomID string) ([]domain.Game, error)
 	GetOrCreatePlayerByName(name string) (*domain.Player, error)
 	GetPlayerByID(id uint) (*domain.Player, error)
 	UpdatePlayer(player *domain.Player) error

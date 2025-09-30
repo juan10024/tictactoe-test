@@ -17,8 +17,8 @@ const Board = memo(({ playerName, isObserver = false }: BoardProps) => {
 
   // Memoizar el estado del tablero para evitar re-renders innecesarios
   const boardState = React.useMemo(() => {
-    return gameState?.Board || '         ';
-  }, [gameState?.Board]);
+    return gameState?.board || '         ';
+  }, [gameState?.board]);
 
   // Memoizar mi símbolo para evitar cálculos repetidos
   const mySymbol = React.useMemo((): 'X' | 'O' | null => {
@@ -28,13 +28,13 @@ const Board = memo(({ playerName, isObserver = false }: BoardProps) => {
     return null;
   }, [players, playerName, isObserver]);
 
-  const isGameActive = gameState?.Status === 'in_progress';
+  const isGameActive = gameState?.status === 'in_progress';
 
   return (
     <div className="relative">
       <div className="grid grid-cols-3 gap-3 p-4 bg-gray-300 dark:bg-gray-950 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-4 border-cyan-500/50">
         {boardState.split('').map((cell, index) => {
-          const isMyTurn = isGameActive && !isObserver && mySymbol === gameState?.CurrentTurn;
+          const isMyTurn = isGameActive && !isObserver && mySymbol === gameState?.currentTurn;
           const disabled = cell !== ' ' || !isMyTurn || isObserver;
 
           return (
@@ -44,7 +44,7 @@ const Board = memo(({ playerName, isObserver = false }: BoardProps) => {
               onClick={() => makeMove(index)}
               disabled={disabled}
               isWinningCell={winningLine ? winningLine.includes(index) : false}
-              isCurrentTurn={isGameActive && !isObserver && gameState.CurrentTurn === mySymbol}
+              isCurrentTurn={isGameActive && !isObserver && gameState.currentTurn === mySymbol}
             />
           );
         })}

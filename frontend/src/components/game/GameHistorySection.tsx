@@ -8,17 +8,29 @@
  */
 
 import { useEffect, useState } from 'react';
-import { BarChart3, Trophy, Users, RotateCcw } from 'lucide-react';
+import { BarChart3, Trophy, Users  } from 'lucide-react';
+import { fetchGameHistory } from '../../services/statsService'; // Importa el servicio
+
+interface Player {
+  id: number;
+  name: string;
+  wins: number;
+  draws: number;
+  losses: number;
+}
 
 interface GameHistoryItem {
   id: number;
   roomID: string;
-  winner: string | null;
-  playerX: string;
-  playerO: string;
-  moves: number;
-  date: string;
-  duration: string;
+  playerX: Player;
+  playerO: Player;
+  winner: Player | null;
+  status: string;
+  board: string;
+  createdAt: string;
+  winnerID: number | null;
+  playerXID: number | null;
+  playerOID: number | null;
 }
 
 /*
@@ -30,38 +42,28 @@ interface GameHistoryItem {
  * Returns:
  *   - JSX.Element: A section with game history, loading indicator, or error message.
  */
-const GameHistorySection = ({ roomId }: { roomId: string; playerName: string }) => {
+const GameHistorySection = ({ roomId }: { roomId: string; }) => {
   const [gameHistory, setGameHistory] = useState<GameHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchGameHistory = async () => {
+    const loadGameHistory = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/rooms/${roomId}/history`);
-
-        if (response.status === 404) {
-          setGameHistory([]);
-          setError(null);
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch game history');
-        }
-
-        const data = await response.json();
+        // Usa el servicio para obtener el historial
+        const data = await fetchGameHistory(roomId);
+        // Ajusta según la estructura de respuesta del backend
         setGameHistory(data.games || []);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching game history:', err);
-        setError('Failed to load game history');
+        setError(err.message || 'Failed to load game history');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchGameHistory();
+    loadGameHistory();
   }, [roomId]);
 
   if (isLoading) {
@@ -106,23 +108,25 @@ const GameHistorySection = ({ roomId }: { roomId: string; playerName: string }) 
                     {game.roomID}
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {game.date}
+                    {new Date(game.createdAt).toLocaleDateString()}
                   </span>
-                </div>
-                <div className="flex items-center gap-1 text-sm">
-                  <RotateCcw size={14} className="text-gray-400" />
-                  <span>{game.duration}</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-3">
                 <div className="text-center">
                   <div className="font-semibold text-cyan-600 dark:text-cyan-400">Player X</div>
-                  <div>{game.playerX}</div>
+                  <div>{game.playerX?.name || 'N/A'}</div>
+                  <div className="text-xs text-gray-500">
+                    W:{game.playerX?.wins || 0} D:{game.playerX?.draws || 0} L:{game.playerX?.losses || 0}
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="font-semibold text-rose-600 dark:text-rose-400">Player O</div>
-                  <div>{game.playerO}</div>
+                  <div>{game.playerO?.name || 'N/A'}</div>
+                  <div className="text-xs text-gray-500">
+                    W:{game.playerO?.wins || 0} D:{game.playerO?.draws || 0} L:{game.playerO?.losses || 0}
+                  </div>
                 </div>
               </div>
 
@@ -132,7 +136,7 @@ const GameHistorySection = ({ roomId }: { roomId: string; playerName: string }) 
                     <>
                       <Trophy className="text-yellow-500" size={16} />
                       <span className="font-semibold">
-                        {game.winner} won
+                        {game.winner.name} won
                       </span>
                     </>
                   ) : (
@@ -145,7 +149,7 @@ const GameHistorySection = ({ roomId }: { roomId: string; playerName: string }) 
                   )}
                 </div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {game.moves} moves
+                  Status: {game.status}
                 </div>
               </div>
             </div>

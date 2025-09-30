@@ -35,7 +35,10 @@ const GameRoom = () => {
     connect(roomId, playerName);
 
     return () => {
-      disconnect();
+      const currentPath = window.location.pathname;
+      if (!currentPath.includes('/stats')) {
+        disconnect();
+      }
     };
   }, [roomId, connect, disconnect, navigate, location, playerName]);
 
@@ -59,7 +62,7 @@ const GameRoom = () => {
 
   useEffect(() => {
     const currentGameState = useGameStore.getState().gameState;
-    if (showMenu && currentGameState?.Status === 'in_progress') {
+    if (showMenu && currentGameState?.status === 'in_progress') {
       setShowMenu(false);
     }
   }, [showMenu]);
@@ -98,7 +101,7 @@ const GameRoom = () => {
     const playerName = new URLSearchParams(location.search).get('playerName') || '';
 
     // Si el juego está terminado, enviar solicitud desde el menú
-    if (gameState?.Status === 'finished') {
+    if (gameState?.status === 'finished') {
       useGameStore.getState().setPlayAgainRequest(playerName);
     }
 
@@ -128,7 +131,7 @@ const GameRoom = () => {
   // Determinar si mostrar "Play Game" o "Continue Game"
   const shouldShowContinueButton = useMemo(() => {
     return !!(gameState &&
-      gameState.Status === 'in_progress' &&
+      gameState.status === 'in_progress' &&
       showMenu);
   }, [gameState, showMenu]);
 

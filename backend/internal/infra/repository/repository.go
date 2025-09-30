@@ -135,6 +135,28 @@ func (r *GormGameRepository) GetPlayerByID(id uint) (*domain.Player, error) {
 }
 
 /*
+ * GetFinishedGamesByRoomID retrieves finished games by its associated RoomID.
+ *
+ * Parameters:
+ *   - roomID (string): The unique identifier of the room.
+ *
+ * Returns:
+ *   - []domain.Game: The matching finished game entities.
+ *   - error: An error if the query fails.
+ */
+func (r *GormGameRepository) GetFinishedGamesByRoomID(roomID string) ([]domain.Game, error) {
+	var games []domain.Game
+	err := r.db.Preload("PlayerX").Preload("PlayerO").Preload("Winner").
+		Where("room_id = ? AND status = ?", roomID, "finished").
+		Order("created_at DESC").
+		Find(&games).Error
+	if err != nil {
+		return nil, err
+	}
+	return games, nil
+}
+
+/*
  * GormStatsRepository is the GORM implementation of the StatsRepository port.
  *
  * Responsibilities:
@@ -211,7 +233,10 @@ func (r *GormStatsRepository) CountPlayers() (int64, error) {
  */
 func (r *GormStatsRepository) GetGamesByRoomID(roomID string) ([]domain.Game, error) {
 	var games []domain.Game
-	result := r.db.Where("room_id = ?", roomID).Order("created_at DESC").Find(&games)
+	result := r.db.Preload("PlayerX").Preload("PlayerO").Preload("Winner").
+		Where("room_id = ?", roomID).
+		Order("created_at DESC").
+		Find(&games)
 	if result.Error != nil {
 		return nil, result.Error
 	}

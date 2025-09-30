@@ -78,7 +78,7 @@ const GeneralStatsSection = () => {
             {generalStats?.totalPlayers.toLocaleString() || 0}
           </div>
           <div className="text-sm text-purple-600 dark:text-purple-400 mt-1">
-            Total Players
+            Total number of players who have tried the game
           </div>
         </div>
         

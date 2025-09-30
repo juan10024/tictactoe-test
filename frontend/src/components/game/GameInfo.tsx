@@ -32,7 +32,7 @@ const GameInfo = memo(() => {
    */
   const currentPlayerName = useMemo(() => {
     if (!gameState) return '';
-    return gameState.CurrentTurn === 'X' 
+    return gameState.currentTurn === 'X' 
       ? players.X?.name || 'Player X'
       : players.O?.name || 'Player O';
   }, [gameState, players]);
@@ -128,28 +128,28 @@ const GameInfo = memo(() => {
             Status: 
             <span className={`
               ml-2 px-3 py-1 rounded-full text-sm font-bold
-              ${gameState.Status === 'waiting' ? 'bg-yellow-100 text-yellow-800' : 
-                gameState.Status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 
+              ${gameState.status === 'waiting' ? 'bg-yellow-100 text-yellow-800' : 
+                gameState.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 
                 'bg-green-100 text-green-800'}
             `}>
-              {gameState.Status === 'waiting' ? 'Waiting for players' : 
-               gameState.Status === 'in_progress' ? 'In Progress' : 
+              {gameState.status === 'waiting' ? 'Waiting for players' : 
+               gameState.status === 'in_progress' ? 'In Progress' : 
                'Finished'}
             </span>
           </p>
         </div>
 
-        {gameState.Status === 'in_progress' && (
+        {gameState.status === 'in_progress' && (
           <div className="text-center">
             <p className="text-lg font-semibold">
               Current Turn:
               <span className={`
                 ml-2 px-4 py-2 rounded-lg text-xl font-bold
-                ${gameState.CurrentTurn === 'X' ? 
+                ${gameState.currentTurn === 'X' ? 
                   'bg-cyan-100 text-cyan-800' : 
                   'bg-rose-100 text-rose-800'}
               `}>
-                {gameState.CurrentTurn}
+                {gameState.currentTurn}
               </span>
             </p>
             <p className="mt-2 text-gray-600 dark:text-gray-300">

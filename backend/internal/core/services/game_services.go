@@ -214,6 +214,7 @@ func (s *GameService) MakeMove(roomID string, playerID uint, position int) (*dom
 				winner.Wins++
 				s.repo.UpdatePlayer(winner)
 			}
+
 			var loserID *uint
 			if winner != nil && game.WinnerID != nil && *game.WinnerID == winner.ID {
 				if game.WinnerID == game.PlayerXID {

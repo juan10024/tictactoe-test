@@ -27,9 +27,9 @@ const GameStatusDisplay = () => {
       <p className="text-center">
         {isObserver ? (
           <span className="text-yellow-600">You are an observer</span>
-        ) : gameState?.Status === 'waiting'
+        ) : gameState?.status === 'waiting'
           ? 'Waiting for opponent...'
-          : gameState?.Status === 'in_progress'
+          : gameState?.status === 'in_progress'
             ? 'Game in progress'
             : 'Game finished'}
       </p>

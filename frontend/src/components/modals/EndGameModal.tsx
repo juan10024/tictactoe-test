@@ -31,9 +31,9 @@ const EndGameModal = ({ playerName }: EndGameModalProps) => {
 
   // Determine winner and match outcome
   const getWinnerName = () => {
-    if (!gameState?.WinnerID) return null;
-    if (players.X?.id === gameState.WinnerID) return players.X.name;
-    if (players.O?.id === gameState.WinnerID) return players.O.name;
+    if (!gameState?.winnerID) return null;
+    if (players.X?.id === gameState.winnerID) return players.X.name;
+    if (players.O?.id === gameState.winnerID) return players.O.name;
     return null;
   };
 

@@ -15,15 +15,15 @@ const PlayerSchema = z.object({
 // Zod schema para validar el estado del juego recibido
 const GameStateSchema = z.object({
   ID: z.number(),
-  RoomID: z.string(),
-  Board: z.string().length(9),
-  CurrentTurn: z.enum(['X', 'O']),
-  Status: z.enum(['waiting', 'in_progress', 'finished']),
-  WinnerID: z.number().nullable(),
-  PlayerXID: z.number().nullable(),
-  PlayerOID: z.number().nullable(),
-  PlayerX: PlayerSchema.optional(),
-  PlayerO: PlayerSchema.optional(),
+  roomID: z.string(), // Cambiado de RoomID a roomID
+  board: z.string().length(9), // Cambiado de board a board
+  currentTurn: z.enum(['X', 'O']), // Cambiado de CurrentTurn a currentTurn
+  status: z.enum(['waiting', 'in_progress', 'finished']), // Cambiado de status a status
+  winnerID: z.number().nullable(), // Cambiado de winnerID a winnerID
+  playerXID: z.number().nullable(), // Cambiado de PlayerXID a playerXID
+  playerOID: z.number().nullable(), // Cambiado de PlayerOID a playerOID
+  playerX: PlayerSchema.optional(), // Cambiado de PlayerX a playerX
+  playerO: PlayerSchema.optional(), // Cambiado de PlayerO a playerO
 });
 
 export type GameState = z.infer<typeof GameStateSchema>;
@@ -93,7 +93,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // Conexión WebSocket
   connect: (roomId: string, playerName: string) => {
-    if (get().socket) return;
+    
+    const currentSocket = get().socket;
+    if (currentSocket) {
+      currentSocket.close(1000, "Reconnecting with new session");
+    }
 
     const wsUrl = `${WS_URL}/join/${roomId}?playerName=${encodeURIComponent(playerName)}`;
     const ws = new WebSocket(wsUrl);
@@ -106,6 +110,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         error: null,
         winningLine: null,
         isGameOver: false,
+        isObserver: false, 
         showConfirmationModal: false,
         showEndGameModal: false,
         showPlayAgainConfirmation: false,
@@ -134,21 +139,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
             // Calcular la línea ganadora si hay un ganador
             let winningLine = null;
-            if (parsedState.Status === 'finished' && parsedState.WinnerID) {
-              winningLine = calculateWinningLine(parsedState.Board);
+            if (parsedState.status === 'finished' && parsedState.winnerID) { 
+              winningLine = calculateWinningLine(parsedState.board); 
             }
 
             set({
               gameState: parsedState,
               players: { X: playerX, O: playerO },
               winningLine,
-              isGameOver: parsedState.Status === 'finished',
+              isGameOver: parsedState.status === 'finished', 
               isObserver: message.isObserver || false,
               isReturningPlayer: isReturning
             });
 
             // Mostrar modal de fin de juego si el juego terminó
-            if (parsedState.Status === 'finished') {
+            if (parsedState.status === 'finished') { 
               setTimeout(() => set({ showEndGameModal: true }), 500);
             }
             break;
@@ -214,26 +219,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
     };
 
     ws.onerror = () => {
-      
+
       set({ error: 'WebSocket connection error.' });
     };
 
     ws.onclose = (event) =>
       console.log('WebSocket closed:', event.code, event.reason);
-      set({
-        isConnected: false,
-        socket: null,
-        gameState: null,
-        players: { X: null, O: null },
-        winningLine: null,
-        isGameOver: false,
-        isObserver: false,
-        showConfirmationModal: false,
-        confirmationOpponent: null,
-        showEndGameModal: false,
-        showPlayAgainConfirmation: false,
-        playAgainRequestingPlayer: null,
-      });
+    set({
+      isConnected: false,
+      socket: null,
+      gameState: null,
+      players: { X: null, O: null },
+      winningLine: null,
+      isGameOver: false,
+      isObserver: false,
+      showConfirmationModal: false,
+      confirmationOpponent: null,
+      showEndGameModal: false,
+      showPlayAgainConfirmation: false,
+      playAgainRequestingPlayer: null,
+    });
   },
 
   respondToPlayAgain: (accepted: boolean) => {
@@ -253,7 +258,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
-    if (socket && socket.readyState === WebSocket.OPEN && gameState?.Status === 'in_progress') {
+    if (socket && socket.readyState === WebSocket.OPEN && gameState?.status === 'in_progress') {
       socket.send(JSON.stringify({ type: 'move', payload: { position } }));
     }
   },
@@ -278,10 +283,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (gameState) {
       const resetGameState = {
         ...gameState,
-        Board: '         ',
-        Status: 'in_progress' as const,
+        board: '         ',
+        status: 'in_progress' as const,
         CurrentTurn: 'X' as const,
-        WinnerID: null,
+        winnerID: null,
         winningLine: null
       };
 
@@ -385,7 +390,7 @@ export const handlePlayAgainAccept = () => {
   const { resetGame } = useGameStore.getState();
   resetGame();
 
-  const event = new CustomEvent('showGameBoard');
+  const event = new CustomEvent('showGameboard');
   window.dispatchEvent(event);
 };
 

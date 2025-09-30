@@ -1,11 +1,11 @@
--- db/migrations/001_initial_schema.sql
 /*
- * Initial Database Schema
- *
- * This SQL script sets up the initial database structure for the Tic-Tac-Toe application.
- * It defines tables for players, games, and game moves, establishing primary keys,
- * foreign key relationships, and indexes for efficient querying. This script is
- * automatically executed by the PostgreSQL container on its first run.
+ * file: 001_initial_schema.sql
+ * package: migrations
+ * description:
+ *     Defines the initial database schema for the Tic-Tac-Toe application.
+ *     Sets up tables for players, games, and game moves with appropriate
+ *     primary keys, foreign key relationships, and indexes for efficient querying.
+ *     This script is automatically executed by the PostgreSQL container on first run.
  */
 
 -- Create a custom function to automatically update the 'updated_at' timestamp.
@@ -40,12 +40,13 @@ EXECUTE PROCEDURE trigger_set_timestamp();
 
 -- Table: games
 -- Stores information about each game session.
+-- This enables tracking of historical games in the same room for statistics.
 CREATE TABLE IF NOT EXISTS games (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ,
-    room_id VARCHAR(50) UNIQUE NOT NULL,
+    room_id VARCHAR(50) NOT NULL,  -- REMOVED UNIQUE constraint to allow multiple games per room
     player_x_id INTEGER REFERENCES players(id) ON DELETE SET NULL,
     player_o_id INTEGER REFERENCES players(id) ON DELETE SET NULL,
     winner_id INTEGER REFERENCES players(id) ON DELETE SET NULL,
@@ -53,8 +54,14 @@ CREATE TABLE IF NOT EXISTS games (
     board CHAR(9) NOT NULL,
     current_turn CHAR(1) NOT NULL
 );
--- Index on room_id for fast game lookups.
+-- Index on room_id for fast game lookups by room.
 CREATE INDEX idx_games_room_id ON games(room_id);
+-- Index on status for filtering active/finished games.
+CREATE INDEX idx_games_status ON games(status);
+-- Composite index for efficient queries of games by room and status.
+CREATE INDEX idx_games_room_id_status ON games(room_id, status);
+-- Index on created_at for ordering historical games by date.
+CREATE INDEX idx_games_created_at ON games(created_at DESC);
 
 CREATE TRIGGER set_timestamp
 BEFORE UPDATE ON games

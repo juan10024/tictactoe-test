@@ -30,16 +30,16 @@ type Player struct {
 // Game represents a single Tic-Tac-Toe match.
 type Game struct {
 	gorm.Model
-	RoomID      string `gorm:"size:50;uniqueIndex;not null"`
-	PlayerXID   *uint
-	PlayerX     Player `gorm:"foreignKey:PlayerXID"`
-	PlayerOID   *uint
-	PlayerO     Player `gorm:"foreignKey:PlayerOID"`
-	WinnerID    *uint
-	Winner      Player `gorm:"foreignKey:WinnerID"`
-	Status      string `gorm:"size:20;not null"`
-	Board       string `gorm:"type:char(9);not null"`
-	CurrentTurn string `gorm:"type:char(1);not null"`
+	RoomID      string `gorm:"size:50;not null" json:"roomID"`
+	PlayerXID   *uint  `json:"playerXID"`
+	PlayerX     Player `json:"playerX" gorm:"foreignKey:PlayerXID"`
+	PlayerOID   *uint  `json:"playerOID"`
+	PlayerO     Player `json:"playerO" gorm:"foreignKey:PlayerOID"`
+	WinnerID    *uint  `json:"winnerID"`
+	Winner      Player `json:"winner" gorm:"foreignKey:WinnerID"`
+	Status      string `gorm:"size:20;not null" json:"status"`
+	Board       string `gorm:"type:char(9);not null" json:"board"`
+	CurrentTurn string `gorm:"type:char(1);not null" json:"currentTurn"`
 }
 
 // GameMove represents a single move made during a game.
