@@ -26,6 +26,9 @@ type GameRepository interface {
 // StatsRepository defines the contract for retrieving game statistics.
 type StatsRepository interface {
 	GetTopPlayers(limit int) ([]domain.Player, error)
+	GetGamesByRoomID(roomID string) ([]domain.Game, error)
+	GetPlayerByName(name string) (*domain.Player, error)
+
 	CountGames() (int64, error)
 	CountPlayers() (int64, error)
 }

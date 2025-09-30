@@ -71,6 +71,8 @@ func main() {
 	router.HandleFunc("/ws/join/", wsHandler.HandleConnection)
 	router.HandleFunc("/api/stats/ranking", statsHandler.GetRanking)
 	router.HandleFunc("/api/stats/general", statsHandler.GetGeneralStats)
+	router.HandleFunc("/api/stats/player", statsHandler.GetPlayerStats)
+	router.HandleFunc("/api/rooms/history/", statsHandler.GetGameHistory)
 	router.HandleFunc("/api/rooms/join/", roomHandler.JoinRoom)
 
 	// HTTP Server Configuration & Launch
@@ -99,7 +101,7 @@ func main() {
  */
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*") // Allow all origins (can be restricted)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 

@@ -126,6 +126,45 @@ func (h *StatsHandler) GetGeneralStats(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, stats)
 }
 
+// GetGameHistory returns the game history for a specific room
+func (h *StatsHandler) GetGameHistory(w http.ResponseWriter, r *http.Request) {
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/rooms/history/")
+	roomID := path
+
+	if roomID == "" {
+		http.Error(w, "Room ID is required as path parameter", http.StatusBadRequest)
+		return
+	}
+
+	history, err := h.statsService.GetGameHistory(roomID)
+	if err != nil {
+		log.Printf("ERROR: Failed to get game history for room %s: %v", roomID, err)
+		respondWithError(w, http.StatusInternalServerError, "Could not retrieve game history.")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, history)
+}
+
+// GetPlayerStats returns statistics for a specific player
+func (h *StatsHandler) GetPlayerStats(w http.ResponseWriter, r *http.Request) {
+	playerName := r.URL.Query().Get("playerName")
+	if playerName == "" {
+		http.Error(w, "Player name is required as query parameter", http.StatusBadRequest)
+		return
+	}
+
+	player, err := h.statsService.GetPlayerStats(playerName)
+	if err != nil {
+		log.Printf("ERROR: Failed to get player stats for %s: %v", playerName, err)
+		respondWithError(w, http.StatusInternalServerError, "Could not retrieve player statistics.")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, player)
+}
+
 /*
  * WebSocketHandler manages WebSocket connections for real-time communication.
  *

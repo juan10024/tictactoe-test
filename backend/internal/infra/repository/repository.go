@@ -92,3 +92,21 @@ func (r *GormGameRepository) GetPlayerByID(id uint) (*domain.Player, error) {
 	}
 	return &player, nil
 }
+
+func (r *GormStatsRepository) GetGamesByRoomID(roomID string) ([]domain.Game, error) {
+	var games []domain.Game
+	result := r.db.Where("room_id = ?", roomID).Order("created_at DESC").Find(&games)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return games, nil
+}
+
+func (r *GormStatsRepository) GetPlayerByName(name string) (*domain.Player, error) {
+	var player domain.Player
+	result := r.db.Where("name = ?", name).First(&player)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &player, nil
+}

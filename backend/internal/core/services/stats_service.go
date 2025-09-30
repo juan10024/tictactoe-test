@@ -58,6 +58,40 @@ type GeneralStatsResponse struct {
 }
 
 /*
+ * GameHistoryResponse represents the response DTO containing game history for a room.
+ *
+ * Fields:
+ *   - RoomID (string): The room identifier.
+ *   - Games ([]domain.Game): A list of games played in the room.
+ */
+type GameHistoryResponse struct {
+	RoomID string        `json:"roomId"`
+	Games  []domain.Game `json:"games"`
+}
+
+/*
+ * GetGameHistory retrieves the game history for a specific room.
+ *
+ * Parameters:
+ *   - roomID (string): The unique identifier of the room.
+ *
+ * Returns:
+ *   - *GameHistoryResponse: DTO containing the game history for the room.
+ *   - error: An error if retrieving the data fails.
+ */
+func (s *StatsService) GetGameHistory(roomID string) (*GameHistoryResponse, error) {
+	games, err := s.repo.GetGamesByRoomID(roomID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &GameHistoryResponse{
+		RoomID: roomID,
+		Games:  games,
+	}, nil
+}
+
+/*
  * GetRanking retrieves the top players based on their win count.
  *
  * Parameters:
@@ -98,4 +132,22 @@ func (s *StatsService) GetGeneralStats() (*GeneralStatsResponse, error) {
 		TotalGames:   totalGames,
 		TotalPlayers: totalPlayers,
 	}, nil
+}
+
+/*
+ * GetPlayerStats retrieves statistics for a specific player.
+ *
+ * Parameters:
+ *   - playerName (string): The name of the player.
+ *
+ * Returns:
+ *   - *domain.Player: DTO containing the player's statistics.
+ *   - error: An error if retrieving the data fails.
+ */
+func (s *StatsService) GetPlayerStats(playerName string) (*domain.Player, error) {
+	player, err := s.repo.GetPlayerByName(playerName)
+	if err != nil {
+		return nil, err
+	}
+	return player, nil
 }

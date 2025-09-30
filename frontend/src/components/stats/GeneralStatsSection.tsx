@@ -1,6 +1,7 @@
 // frontend/src/components/stats/GeneralStatsSection.tsx
 import { useEffect, useState } from 'react';
 import { BarChart3, Users, Trophy } from 'lucide-react';
+import { fetchGeneralStats } from '../../services/statsService';
 
 interface GeneralStats {
   totalGames: number;
@@ -13,27 +14,24 @@ const GeneralStatsSection = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchGeneralStats = async () => {
+    const loadGeneralStats = async () => { // Cambia el nombre de la función interna
       try {
         setIsLoading(true);
-        const response = await fetch('/api/stats/general');
-        if (!response.ok) {
-          throw new Error('Failed to fetch general statistics');
-        }
-        const data = await response.json();
+        // Usa el servicio que creaste
+        const data = await fetchGeneralStats();
         setGeneralStats({
           totalGames: data.totalGames,
           totalPlayers: data.totalPlayers
         });
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching general stats:', err);
-        setError('Failed to load general statistics');
+        setError(err.message || 'Failed to load general statistics');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchGeneralStats();
+    loadGeneralStats(); // Llama a la función con el nuevo nombre
   }, []);
 
   if (isLoading) {
