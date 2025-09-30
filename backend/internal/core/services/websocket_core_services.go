@@ -92,7 +92,30 @@ func ServeWs(hub *Hub, gameService *GameService, w http.ResponseWriter, r *http.
 	}
 	hub.register <- client
 
-	broadcastGameState(hub, gameService, roomID)
+	var playerX, playerO *domain.Player
+	if game.PlayerXID != nil {
+		playerX, _ = gameService.GetPlayerByID(*game.PlayerXID)
+	}
+	if game.PlayerOID != nil {
+		playerO, _ = gameService.GetPlayerByID(*game.PlayerOID)
+	}
+
+	broadcastMsg := GameStateBroadcast{
+		Type:      "gameStateUpdate",
+		GameState: game,
+		Players: struct {
+			X *domain.Player `json:"X"`
+			O *domain.Player `json:"O"`
+		}{X: playerX, O: playerO},
+		IsObserver: isObserver,
+	}
+
+	msgBytes, err := json.Marshal(broadcastMsg)
+	if err != nil {
+		log.Printf("ERROR: Could not marshal game state for new client: %v", err)
+	} else {
+		client.send <- msgBytes
+	}
 
 	if !isObserver && game.Status == "waiting" && game.PlayerXID != nil && game.PlayerOID != nil {
 		game.Status = "in_progress"

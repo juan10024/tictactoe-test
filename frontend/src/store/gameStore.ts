@@ -15,15 +15,15 @@ const PlayerSchema = z.object({
 // Zod schema para validar el estado del juego recibido
 const GameStateSchema = z.object({
   ID: z.number(),
-  roomID: z.string(), // Cambiado de RoomID a roomID
-  board: z.string().length(9), // Cambiado de board a board
-  currentTurn: z.enum(['X', 'O']), // Cambiado de CurrentTurn a currentTurn
-  status: z.enum(['waiting', 'in_progress', 'finished']), // Cambiado de status a status
-  winnerID: z.number().nullable(), // Cambiado de winnerID a winnerID
-  playerXID: z.number().nullable(), // Cambiado de PlayerXID a playerXID
-  playerOID: z.number().nullable(), // Cambiado de PlayerOID a playerOID
-  playerX: PlayerSchema.optional(), // Cambiado de PlayerX a playerX
-  playerO: PlayerSchema.optional(), // Cambiado de PlayerO a playerO
+  roomID: z.string(),  
+  board: z.string().length(9),                                   
+  currentTurn: z.enum(['X', 'O']), 
+  status: z.enum(['waiting', 'in_progress', 'finished']), 
+  winnerID: z.number().nullable(), 
+  playerXID: z.number().nullable(),
+  playerOID: z.number().nullable(), 
+  playerX: PlayerSchema.optional(), 
+  playerO: PlayerSchema.optional(), 
 });
 
 export type GameState = z.infer<typeof GameStateSchema>;
@@ -93,7 +93,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // Conexión WebSocket
   connect: (roomId: string, playerName: string) => {
-    
+    set({ playerName });
     const currentSocket = get().socket;
     if (currentSocket) {
       currentSocket.close(1000, "Reconnecting with new session");
@@ -110,7 +110,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         error: null,
         winningLine: null,
         isGameOver: false,
-        isObserver: false, 
         showConfirmationModal: false,
         showEndGameModal: false,
         showPlayAgainConfirmation: false,
@@ -123,9 +122,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const message = JSON.parse(event.data);
 
         switch (message.type) {
+
           case 'gameStateUpdate': {
             const parsedState = GameStateSchema.parse(message.gameState);
+            const currentPlayerName = get().playerName;
 
+           
             const playerX = message.players?.X
               ? { ...message.players.X, symbol: 'X' } as Player
               : null;
@@ -133,11 +135,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
               ? { ...message.players.O, symbol: 'O' } as Player
               : null;
 
-            // Verificar si es jugador registrado (tiene stats)
+           
+            const isObserver = !(
+              (playerX?.name === currentPlayerName) ||
+              (playerO?.name === currentPlayerName)
+            );
+
             const isReturning = !!(playerX?.wins || playerX?.losses || playerX?.draws ||
               playerO?.wins || playerO?.losses || playerO?.draws);
 
-            // Calcular la línea ganadora si hay un ganador
             let winningLine = null;
             if (parsedState.status === 'finished' && parsedState.winnerID) { 
               winningLine = calculateWinningLine(parsedState.board); 
@@ -148,11 +154,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
               players: { X: playerX, O: playerO },
               winningLine,
               isGameOver: parsedState.status === 'finished', 
-              isObserver: message.isObserver || false,
+              isObserver,
               isReturningPlayer: isReturning
             });
 
-            // Mostrar modal de fin de juego si el juego terminó
             if (parsedState.status === 'finished') { 
               setTimeout(() => set({ showEndGameModal: true }), 500);
             }
