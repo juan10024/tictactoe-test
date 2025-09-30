@@ -1,4 +1,11 @@
-// frontend/src/components/stats/GeneralStatsSection.tsx
+/*
+ * file: GeneralStatsSection.tsx
+ * component: GeneralStatsSection
+ * description:
+ *     Displays general statistics of the game (total players and total games).
+ *     Fetches the data from the backend via the stats service.
+ */
+
 import { useEffect, useState } from 'react';
 import { BarChart3, Users, Trophy } from 'lucide-react';
 import { fetchGeneralStats } from '../../services/statsService';
@@ -14,24 +21,22 @@ const GeneralStatsSection = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadGeneralStats = async () => { // Cambia el nombre de la función interna
+    const loadGeneralStats = async () => {
       try {
         setIsLoading(true);
-        // Usa el servicio que creaste
         const data = await fetchGeneralStats();
         setGeneralStats({
           totalGames: data.totalGames,
-          totalPlayers: data.totalPlayers
+          totalPlayers: data.totalPlayers,
         });
       } catch (err: any) {
-        console.error('Error fetching general stats:', err);
         setError(err.message || 'Failed to load general statistics');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadGeneralStats(); // Llama a la función con el nuevo nombre
+    loadGeneralStats();
   }, []);
 
   if (isLoading) {
@@ -55,9 +60,7 @@ const GeneralStatsSection = () => {
           <BarChart3 className="text-purple-500" size={24} />
           General Statistics
         </h2>
-        <div className="text-center py-4 text-red-500">
-          {error}
-        </div>
+        <div className="text-center py-4 text-red-500">{error}</div>
       </div>
     );
   }
@@ -68,7 +71,7 @@ const GeneralStatsSection = () => {
         <BarChart3 className="text-purple-500" size={24} />
         General Statistics
       </h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
           <div className="flex justify-center mb-2">
@@ -81,7 +84,7 @@ const GeneralStatsSection = () => {
             Total number of players who have tried the game
           </div>
         </div>
-        
+
         <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
           <div className="flex justify-center mb-2">
             <Trophy className="text-blue-600 dark:text-blue-400" size={32} />

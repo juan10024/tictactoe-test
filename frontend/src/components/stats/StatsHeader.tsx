@@ -1,4 +1,11 @@
-// frontend/src/components/stats/StatsHeader.tsx
+/*
+ * file: StatsHeader.tsx
+ * component: StatsHeader
+ * description:
+ *     Header component for the statistics page.
+ *     Provides a back button to return to the game and a title.
+ */
+
 import { ArrowLeft } from 'lucide-react';
 
 interface StatsHeaderProps {
