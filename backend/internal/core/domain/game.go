@@ -2,9 +2,9 @@
  * file: game.go
  * package: domain
  * description:
- * 			This file defines the core data structures (entities) of the application.
- * 			Used across all layers, from database persistence with GORM tags
- * 			to the business logic in services.
+ *     Defines the core domain entities of the application.
+ *     These structs are shared across all layers, including database persistence
+ *     (via GORM), business logic (services), and transport (DTOs).
  */
 
 package domain
@@ -20,8 +20,8 @@ type Player struct {
 	ID     uint   `gorm:"primaryKey" json:"id"`
 	Name   string `gorm:"size:50;uniqueIndex;not null" json:"name"`
 	Wins   int    `gorm:"default:0" json:"wins"`
-	Draws  int    `json:"draws" gorm:"default:0"`
-	Losses int    `json:"losses" gorm:"default:0"`
+	Draws  int    `gorm:"default:0" json:"draws"`
+	Losses int    `gorm:"default:0" json:"losses"`
 
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
@@ -42,10 +42,8 @@ type Game struct {
 	CurrentTurn string `gorm:"type:char(1);not null"`
 }
 
-/* GameMove represents a single move made in a game.
- * This is useful for auditing or replaying games, though not strictly required
- */
-
+// GameMove represents a single move made during a game.
+// Useful for auditing or implementing a replay feature.
 type GameMove struct {
 	gorm.Model
 	GameID   uint

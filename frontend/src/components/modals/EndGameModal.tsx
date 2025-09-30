@@ -1,4 +1,20 @@
-// frontend/src/components/EndGameModal.tsx
+/*
+ * file: EndGameModal.tsx
+ * component: EndGameModal
+ * description:
+ *     Modal that appears at the end of a match showing the result (win, lose, or draw),
+ *     displaying player statistics, and providing actions to either exit or play again.
+ *
+ * props:
+ *   - playerName (string): Name of the current player, used to determine if they are the winner.
+ *
+ * state (from store):
+ *   - gameState (object): Current game state, including winner information.
+ *   - players (object): Player data for X and O (name, wins, losses, draws).
+ *   - setShowEndGameModal (function): Toggles the modal visibility.
+ *   - setPlayAgainRequest (function): Triggers a new play-again request.
+ */
+
 import { useGameStore } from '../../store/gameStore';
 import { Trophy, Users, RotateCcw, LogOut } from 'lucide-react';
 
@@ -7,16 +23,15 @@ interface EndGameModalProps {
 }
 
 const EndGameModal = ({ playerName }: EndGameModalProps) => {
-  
+  // Zustand store selectors
   const gameState = useGameStore((state) => state.gameState);
   const players = useGameStore((state) => state.players);
   const setShowEndGameModal = useGameStore((state) => state.setShowEndGameModal);
   const setPlayAgainRequest = useGameStore((state) => state.setPlayAgainRequest);
-  
 
+  // Determine winner and match outcome
   const getWinnerName = () => {
     if (!gameState?.WinnerID) return null;
-    
     if (players.X?.id === gameState.WinnerID) return players.X.name;
     if (players.O?.id === gameState.WinnerID) return players.O.name;
     return null;
@@ -26,8 +41,9 @@ const EndGameModal = ({ playerName }: EndGameModalProps) => {
   const isDraw = !winnerName;
   const isWinner = winnerName === playerName;
 
+  // Actions
   const handlePlayAgain = () => {
-    setPlayAgainRequest(playerName); 
+    setPlayAgainRequest(playerName);
     setShowEndGameModal(false);
   };
 
@@ -41,7 +57,7 @@ const EndGameModal = ({ playerName }: EndGameModalProps) => {
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full transform transition-all duration-300 scale-100 animate-fade-in">
         <div className="text-center">
-          {/* Icono y título según el resultado */}
+          {/* Result icon and status */}
           <div className="mb-6 flex justify-center">
             {isDraw ? (
               <div className="relative">
@@ -66,8 +82,8 @@ const EndGameModal = ({ playerName }: EndGameModalProps) => {
               </div>
             )}
           </div>
-          
-          {/* Mensaje del resultado */}
+
+          {/* Result message */}
           <h3 className="text-2xl font-bold mb-4">
             {isDraw ? (
               <span className="text-yellow-600 dark:text-yellow-400">It's a TIE!</span>
@@ -77,15 +93,15 @@ const EndGameModal = ({ playerName }: EndGameModalProps) => {
               <span className="text-red-600 dark:text-red-400">You Lost!</span>
             )}
           </h3>
-          
-          {/* Detalles del resultado */}
+
+          {/* Winner details */}
           {!isDraw && winnerName && (
             <p className="text-gray-600 dark:text-gray-300 mb-6">
               {isWinner ? 'Congratulations!' : `${winnerName} wins!`}
             </p>
           )}
-          
-          {/* Estadísticas del juego actual */}
+
+          {/* Players statistics */}
           <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="text-center">
@@ -108,8 +124,8 @@ const EndGameModal = ({ playerName }: EndGameModalProps) => {
               </div>
             </div>
           </div>
-          
-          {/* Botones de acción */}
+
+          {/* Action buttons */}
           <div className="flex justify-center gap-4">
             <button
               onClick={handleExit}
@@ -128,7 +144,7 @@ const EndGameModal = ({ playerName }: EndGameModalProps) => {
           </div>
         </div>
       </div>
-      
+
       <style>{`
         @keyframes fade-in {
           from { opacity: 0; transform: scale(0.9); }

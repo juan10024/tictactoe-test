@@ -126,7 +126,16 @@ func (h *StatsHandler) GetGeneralStats(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, stats)
 }
 
-// GetGameHistory returns the game history for a specific room
+/*
+ * GetGameHistory returns the game history for a specific room
+ *
+ * Parameters:
+ *   - w (http.ResponseWriter): The HTTP response writer.
+ *   - r (*http.Request): The HTTP request.
+ *
+ * Returns:
+ *   - None. Writes the statistics to the response.
+ */
 func (h *StatsHandler) GetGameHistory(w http.ResponseWriter, r *http.Request) {
 
 	path := strings.TrimPrefix(r.URL.Path, "/api/rooms/history/")
@@ -147,7 +156,16 @@ func (h *StatsHandler) GetGameHistory(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, history)
 }
 
-// GetPlayerStats returns statistics for a specific player
+/*
+ * GetPlayerStats returns statistics for a specific player
+ *
+ * Parameters:
+ *   - w (http.ResponseWriter): The HTTP response writer.
+ *   - r (*http.Request): The HTTP request.
+ *
+ * Returns:
+ *   - None. Writes the statistics to the response.
+ */
 func (h *StatsHandler) GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 	playerName := r.URL.Query().Get("playerName")
 	if playerName == "" {

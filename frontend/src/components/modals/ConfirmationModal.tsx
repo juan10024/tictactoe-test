@@ -1,4 +1,27 @@
-// frontend/src/components/ConfirmationModals.tsx
+/*
+ * file: ConfirmationModals.tsx
+ * component: ConfirmationModals
+ * description:
+ *     This component centralizes all confirmation modals for the game room.
+ *     It includes:
+ *       - Confirmation to leave a room.
+ *       - Confirmation to start a game when invited by an opponent.
+ *       - Confirmation to leave an active game.
+ *
+ * props:
+ *   - showLeaveModal (boolean): Controls the display of the leave-room modal.
+ *   - onLeaveModalClose (function): Callback to close the leave-room modal.
+ *   - onLeaveRoom (function): Callback to confirm leaving the room.
+ *   - showLeaveGameModal (boolean): Controls the display of the leave-game modal.
+ *   - onLeaveGameModalClose (function): Callback to close the leave-game modal.
+ *   - onConfirmLeaveGame (function): Callback to confirm leaving the game.
+ *
+ * state (from store):
+ *   - showConfirmationModal (boolean): Controls game start confirmation modal.
+ *   - confirmationOpponent (string): Opponent name requesting to start the game.
+ *   - confirmGameStart (function): Store action to accept or reject game start.
+ */
+
 import { useGameStore } from '../../store/gameStore';
 import { X, Check } from 'lucide-react';
 
@@ -19,13 +42,14 @@ const ConfirmationModals = ({
   onLeaveGameModalClose,
   onConfirmLeaveGame
 }: ConfirmationModalsProps) => {
+  // Zustand store selectors
   const showConfirmationModal = useGameStore((state) => state.showConfirmationModal);
   const confirmationOpponent = useGameStore((state) => state.confirmationOpponent);
   const confirmGameStart = useGameStore((state) => state.confirmGameStart);
 
   return (
     <>
-      {/* Modal para confirmar salida de sala */}
+      {/* Modal to confirm leaving the room */}
       {showLeaveModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full">
@@ -54,7 +78,7 @@ const ConfirmationModals = ({
         </div>
       )}
 
-      {/* Modal de confirmación de inicio de juego */}
+      {/* Modal to confirm starting the game */}
       {showConfirmationModal && confirmationOpponent && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full">
@@ -83,7 +107,7 @@ const ConfirmationModals = ({
         </div>
       )}
 
-      {/* Modal de confirmación para salir del juego */}
+      {/* Modal to confirm leaving the active game */}
       {showLeaveGameModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full">
