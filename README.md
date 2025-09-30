@@ -78,26 +78,40 @@ Este proyecto es una implementación full-stack de un jeugo **Tic-Tac-Toe** con 
 4. **📂 Estructura del proyecto**
 
   tictactoe-project/
+  
 ├── backend/               # Aplicación Go
+
 │   ├── main.go            # Punto de entrada
+
 │   ├── internal/          # Lógica de negocio (Clean Architecture)
+
 │   │   ├── core/          # Dominio y puertos
 │   │   │   └── domain/    
 │   │   │   └── ports/    
 │   │   │   └── services/  # Implementaciones (WebSockets, juego, stats)
+
 │   │   └── infra/         # Repositorio 
+
 │   │   └── adapters/      # Handlers HTTP
 │   │   │   └── db/    
 │   │   │   └── dto/    
 │   │   │   └── handlers/  # Administración de Peticiones
+
 │   └── migrations/        # Esquema inicial de BD
+
 ├── frontend/              # Aplicación React + TS
 │   ├── src/
+
 │   │   ├── components/    # Componentes reutilizables
+
 │   │   ├── pages/         # Vistas principales
+
 │   │   ├── store/         # Zustand: gameStore.ts
+
 │   │   ├── services/      # Llamadas a API y WebSockets
+
 │   │   └── config.ts      # URLs y constantes
+
 ├── docker-compose.yml     # Servicios: frontend, backend, postgres
 └── README.md
 
@@ -107,3 +121,4 @@ Este proyecto es una implementación full-stack de un jeugo **Tic-Tac-Toe** con 
   - Ranking global: GET /api/stats/ranking
   - Estadísticas generales: GET /api/stats/general
   - Estadísticas de jugador: GET /api/stats/player?playerName=...
+
